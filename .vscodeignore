@@ -1,0 +1,17 @@
+.vscode/**
+src/**
+scripts/**
+spike/**
+test/**
+node_modules/**
+**/*.map
+tsconfig.json
+esbuild.mjs
+CLAUDE.md
+RESEARCH.md
+TESTING-WITH-MATLAB.md
+.gitignore
+dist/**
+!dist/extension.js
+!dist/commandWindow.js
+README.md

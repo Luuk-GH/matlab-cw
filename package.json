@@ -1,0 +1,169 @@
+{
+  "name": "matlab-command-window-community",
+  "displayName": "MATLAB Command Window (community)",
+  "description": "A better Command Window for the official MATLAB extension: HTML output with clickable error links, collapsible output, completion pop-up, help tooltips and Stop, attached to the MATLAB the official extension already runs (no second MATLAB). Not affiliated with or endorsed by MathWorks.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "matlab",
+    "command window",
+    "repl"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:matlab"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "matlab",
+        "extensions": [
+          ".m"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "matlabCommandWindow.show",
+        "title": "Show",
+        "category": "MATLAB Command Window"
+      },
+      {
+        "command": "matlabCommandWindow.connect",
+        "title": "Connect to Shared MATLAB",
+        "category": "MATLAB Command Window",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "matlabCommandWindow.disconnect",
+        "title": "Disconnect",
+        "category": "MATLAB Command Window",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "matlabCommandWindow.interrupt",
+        "title": "Interrupt",
+        "category": "MATLAB Command Window",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "matlabCommandWindow.commandWindow.clear",
+        "title": "Clear Command Window",
+        "category": "MATLAB Command Window",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "matlabCommandWindow.copyShareCommand",
+        "title": "Copy shareMATLABSession() Command",
+        "category": "MATLAB Command Window"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "matlabCommandWindow.interrupt",
+          "when": "view == matlabCommandWindow.commandWindow && matlabCommandWindow.busy",
+          "group": "navigation@1"
+        },
+        {
+          "command": "matlabCommandWindow.commandWindow.clear",
+          "when": "view == matlabCommandWindow.commandWindow",
+          "group": "navigation@2"
+        },
+        {
+          "command": "matlabCommandWindow.connect",
+          "when": "view == matlabCommandWindow.commandWindow",
+          "group": "navigation@3"
+        },
+        {
+          "command": "matlabCommandWindow.disconnect",
+          "when": "view == matlabCommandWindow.commandWindow",
+          "group": "navigation@4"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MATLAB Command Window (community)",
+      "properties": {
+        "matlabCommandWindow.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Connect to the shared MATLAB when the Command Window is shown, and reconnect when `shareMATLABSession()` is run again."
+        },
+        "matlabCommandWindow.languageServerPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "The MATLAB language server used to connect (`.../server/out/index.js`). Leave empty to use the one inside the installed official MATLAB extension (`MathWorks.language-matlab`)."
+        }
+      }
+    },
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "matlabCommandWindowPanel",
+          "title": "MATLAB CW",
+          "icon": "media/command-window.svg"
+        }
+      ]
+    },
+    "views": {
+      "matlabCommandWindowPanel": [
+        {
+          "type": "webview",
+          "id": "matlabCommandWindow.commandWindow",
+          "name": "Command Window",
+          "icon": "media/command-window.svg",
+          "contextualTitle": "MATLAB"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "npm run typecheck && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/commandWindow/webview",
+    "package": "npm run typecheck && node scripts/vsix-readme.mjs && vsce package --allow-missing-repository --no-rewrite-relative-links --readme-path dist/README.vsix.md",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "test": "npm run test:unit && npm run test:fake && npm run test:integration",
+    "test:unit": "node scripts/run-tests.mjs unit",
+    "test:fake": "node scripts/run-tests.mjs fake",
+    "test:integration": "node esbuild.mjs && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-integration.mjs",
+    "spike:build": "esbuild spike/spike.ts --bundle --platform=node --target=node18 --outfile=spike/matlab-spike.js --log-level=warning",
+    "test:vsix": "npm run package && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-vsix-test.mjs"
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.4",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "@types/node": "^20.19.43",
+    "@types/vscode": "1.95.0",
+    "@vscode/vsce": "^4.1.1",
+    "esbuild": "^0.28.2",
+    "typescript": "~5.9"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Connecting to MATLAB needs a trusted workspace.",
+      "restrictedConfigurations": [
+        "matlabCommandWindow.languageServerPath"
+      ]
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Connects to a local MATLAB."
+    }
+  }
+}

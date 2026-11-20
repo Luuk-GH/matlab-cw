@@ -1,0 +1,65 @@
+// Finds the MATLAB session shared with shareMATLABSession() (MathWorks' "MATLAB MCP Server Toolbox", installed by
+// the MATLAB Agentic Toolkit or `matlab-mcp-server --setup-matlab`, R2023a+). That function turns on MATLAB's web
+// connector and writes {port, certificate, apiKey, pid, basePath} to sessionDetails.json in the MCP server's
+// app-data folder (read from the toolbox's +mcpserver/+internal/shareMATLABSession.m and DefaultAppDataLocator.m).
+// The same file is what the MathWorks MCP server uses in --matlab-session-mode=existing.
+// No VS Code dependency; unit-tested.
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { ConnectorTarget } from './connectorProxy';
+
+export interface SharedSession extends ConnectorTarget {
+  pid: number;
+  /** The file the details came from. */
+  file: string;
+  /** Its modification time (a new shareMATLABSession() call changes it). */
+  mtimeMs: number;
+}
+
+/** Where shareMATLABSession() writes its details on this OS (MCW_SESSION_FILE overrides, for tests). */
+export function sessionFilePath(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+  if (env.MCW_SESSION_FILE) { return env.MCW_SESSION_FILE; }
+  let dir: string;
+  if (platform === 'win32') { dir = path.join(env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming'), 'MathWorks', 'MATLAB MCP Server'); }
+  else if (platform === 'darwin') { dir = path.join(env.HOME ?? os.homedir(), 'Library', 'Application Support', 'MathWorks', 'MATLAB MCP Server'); }
+  else { dir = path.join(env.HOME ?? os.homedir(), '.MathWorks', 'MATLABMCPServer'); }
+  return path.join(dir, 'v1', 'sessionDetails.json');
+}
+
+export type SessionLookup =
+  | { ok: true; session: SharedSession }
+  | { ok: false; reason: 'missing' | 'invalid' | 'stale'; message: string; file: string };
+
+/** Read and check the session file. `alive` tells whether a process id still exists. */
+export function readSharedSession(file = sessionFilePath(), alive: (pid: number) => boolean = processAlive): SessionLookup {
+  let text: string;
+  let mtimeMs: number;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+    mtimeMs = fs.statSync(file).mtimeMs;
+  } catch {
+    return { ok: false, reason: 'missing', file, message: 'No shared MATLAB session found.' };
+  }
+  let d: Record<string, unknown>;
+  try { d = JSON.parse(text.replace(/^﻿/, '')); } catch {
+    return { ok: false, reason: 'invalid', file, message: `The shared-session file is not valid JSON: ${file}` };
+  }
+  const port = Number(d.port), pid = Number(d.pid);
+  const certificate = typeof d.certificate === 'string' ? d.certificate : '';
+  const apiKey = typeof d.apiKey === 'string' ? d.apiKey : '';
+  if (!port || !certificate || !apiKey) {
+    return { ok: false, reason: 'invalid', file, message: `The shared-session file lacks port, certificate or apiKey: ${file}` };
+  }
+  if (pid && !alive(pid)) {
+    return { ok: false, reason: 'stale', file, message: `The MATLAB that was shared (process ${pid}) is no longer running.` };
+  }
+  return {
+    ok: true,
+    session: { port, certificate, apiKey, pid, basePath: typeof d.basePath === 'string' ? d.basePath : '', file, mtimeMs },
+  };
+}
+
+export function processAlive(pid: number): boolean {
+  try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; }
+}
