@@ -68,7 +68,7 @@ export async function run(): Promise<void> {
         api.session.interrupt();
         await sleep(500);
         await withLimit(api.session.execute("if ~isempty(dbstack) || feature('IsDebugMode'), dbquit('all'); end"), 10000);
-        await withLimit(api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s`), 10000);
+        await withLimit(api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s mcwOrder`), 10000);
       };
     }
     s = await untilMode('ready');
@@ -81,6 +81,15 @@ export async function run(): Promise<void> {
     s = await untilText(/x =\s+42/);
     check('command output shown', !!s, (await snap()).text.slice(-300));
     check('echoed command with prompt', /^>> x = 6\*7/m.test(s?.text ?? ''));
+    // A command's output comes before the next command's echo ([verified, R2026b] a late READY once broke this).
+    await untilMode('ready');
+    await typeLine('mcwOrder = magic(3)'); await untilMode('ready');
+    await typeLine('disp(99)');
+    s = await untilText(/^\s*99$/m);
+    const orderText = s?.text ?? '';
+    const rowAt = orderText.search(/mcwOrder =\s+8\s+1\s+6/);
+    check('output before the next echo', rowAt >= 0 && rowAt < orderText.lastIndexOf('>> disp(99)'), JSON.stringify(orderText.slice(-300)));
+    await untilMode('ready');
 
     // ---- errors in red, links ----
     await typeLine('y = q + 1');
@@ -134,9 +143,29 @@ export async function run(): Promise<void> {
     const tip = (await cw.test({ kind: 'hover', word: 'zeros' })) as string | null;
     check('help tooltip from MATLAB', !!tip && /X = zeros\(n\)/.test(tip) && /Create array of all zeros/.test(tip), String(tip));
     await cw.test({ kind: 'type', text: 'zeros(' });
-    s = await waitFor(async () => { const x = await snap(); return /X = zeros/.test(x.tooltip) ? x : undefined; }, 5000);
-    check('usage hint while typing a call', !!s, (await snap()).tooltip);
+    s = await waitFor(async () => { const x = await snap(); return /X = zeros/.test(x.tooltip) || /zeros\(/.test(x.signature) ? x : undefined; }, 8000);
+    check('usage hint while typing a call', !!s, `${(await snap()).tooltip} | ${(await snap()).signature}`);
     check('input line is highlighted', (s?.highlighted.length ?? 0) > 0);
+    // MATLAB's signature help, like the editor's parameter hints: the form, the current argument, its purpose.
+    for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
+    await cw.test({ kind: 'type', text: 'linspace(0, ' });
+    s = await waitFor(async () => { const x = await snap(); return /linspace\(x1,x2,n\)/.test(x.signature) ? x : undefined; }, 8000);
+    check('signature box shows the function form', !!s, (await snap()).signature);
+    check('signature box highlights the current argument', s?.signatureActive === 'x2', s?.signatureActive);
+    check('signature box explains the argument', /Point interval/.test(s?.signature ?? '') && /pair of scalars/.test(s?.signature ?? ''), s?.signature);
+    // Esc closes an open completion list first (as in the editor), then the signature box, and only then clears the line.
+    await cw.test({ kind: 'key', key: 'Escape' });
+    if ((await snap()).signature) { await cw.test({ kind: 'key', key: 'Escape' }); }
+    s = await snap();
+    check('Esc closes the signature box (before clearing the line)', s.signature === '' && s.input === 'linspace(0, ', `${s.signature} | ${s.input}`);
+    for (let i = 0; i < 2; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
+    await cw.test({ kind: 'type', text: 'plot(' });
+    s = await waitFor(async () => { const x = await snap(); return /plot\(Y,LineSpec,options\)\s*1 of \d+/.test(x.signature) ? x : undefined; }, 8000);
+    check('signature box: the suggested form first, "1 of N"', !!s && s.signatureActive === 'Y' && /y-coordinates/.test(s.signature), (await snap()).signature);
+    await cw.test({ kind: 'key', key: 'Alt-ArrowDown' });
+    s = await snap();
+    check('Alt+Down shows the next form', /2 of \d+/.test(s.signature) && !/^iplot\(Y,LineSpec,options\)/.test(s.signature), s.signature);
+    for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
     await cw.test({ kind: 'key', key: 'Escape' });
 
     // ---- input(), keyboard, Stop ----
@@ -161,7 +190,9 @@ export async function run(): Promise<void> {
     await typeLine(`run('${mq(path.join(dir, 'long_loop.m'))}')`);
     s = await untilMode('busy');
     check('Stop button visible while busy', !!s?.stopVisible);
-    await sleep(300);
+    // Press Stop once the loop really runs: [verified, R2026b] an interrupt that arrives before the code starts, while
+    // the MATLAB extension's debugger is active (after the keyboard step), becomes a debugger pause at line 1.
+    await sleep(real ? 1500 : 300);
     await cw.test({ kind: 'clickStop' });
     s = await untilMode('ready', 5000);
     check('Stop interrupts the run', !!s && s.stopVisible === false, (await snap()).mode);
@@ -169,7 +200,7 @@ export async function run(): Promise<void> {
     // ---- Run File / Section / Selection from the editor go to the Command Window, the editor keeps focus ----
     const demo = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(path.join(dir, 'error_demo.m')));
     await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runFile')), 15000);
-    s = await untilText(/>> run\('.*error_demo\.m'\)[\s\S]*Error in error_demo \(line 3\)/);
+    s = await untilText(/^>> error_demo$[\s\S]*Error in error_demo \(line 3\)/m);
     check('Run File runs the file in the Command Window', !!s, (await snap()).text.slice(-300));
     check('the editor keeps the focus after Run File', vscode.window.activeTextEditor?.document === demo.document);
     demo.selection = new vscode.Selection(1, 0, 1, 6);   // "a = 1;"
@@ -226,7 +257,7 @@ export async function run(): Promise<void> {
     check('works after reconnecting', !!(await untilText(/\s123\n/)));
     if (real) {
       // Leave the user's MATLAB as we found it: folder back, our test variables gone.
-      await api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s`);
+      await api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s mcwOrder`);
       const now = await api.session.queryText('pwd');
       check('MATLAB is back in its own folder', now === startFolder, `${now} vs ${startFolder}`);
     }

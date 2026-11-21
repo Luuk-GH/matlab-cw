@@ -121,6 +121,11 @@ from the editor (the editor keeps the focus), an `input()` from another client l
 disconnect/reconnect. Passed 4 runs in a row with the official MATLAB extension attached to the same MATLAB.
 Screenshots: `docs/screenshots/` (`npm run demo:screenshots`).
 
+Added 2026-11-21 (48 checks, 3 runs in a row): signature help (`linspace(0, ` → `linspace(x1,x2,n)` with `x2`,
+"Point interval"; `plot(` → `plot(Y,LineSpec,options)`, "1 of N", Alt+Down), Esc closes it before clearing the
+line, output stays before the next echo, Run File echoes the script name. The real-MATLAB tests run on a temporary
+copy of `test/workspace`, so breakpoints set on the project's files (seen: one in `long_loop.m`) do not stop them.
+
 ## Still unverified
 
 1. The Command Window UI with real MATLAB: everything in sections 1–6.
@@ -132,4 +137,6 @@ Screenshots: `docs/screenshots/` (`npm run demo:screenshots`).
 4. That the official extension's own features are undisturbed while we are attached (1.10).
 5. Warning markers (S11 events recorded, not yet checked in the UI: 2.3).
 6. Behaviour after MATLAB restarts, VS Code closes, or several MATLABs are shared (1.9, 6.1, 6.2).
+8. A "ping" sound reported with Ctrl+Enter (Run Section) on a multi-section script. MATLAB's side is clean (no
+   errors, no bell characters, normal prompts for multi-line sections); the source is not found yet.
 7. Releases other than R2026b (the release decides the protocol version, see RESEARCH.md §8, 3a).

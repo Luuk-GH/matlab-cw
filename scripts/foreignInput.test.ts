@@ -77,6 +77,38 @@ async function main(): Promise<void> {
   const kind = await Promise.race([kb, new Promise(r => setTimeout(() => r('timeout'), 1000))]);
   assert.strictEqual(kind, 'debug', 'keyboard after an input() answer reaches K>>');
   assert.strictEqual(s.state, 'debug');
+  b.prompt('BUSY', false); b.finishEval(); b.prompt('READY', true);   // dbcont-like: back to >>
+  await new Promise(r => setTimeout(r, 100));
+  assert.strictEqual(s.state, 'idle');
+
+  // [verified, R2026b] A late READY of the previous command, arriving just after the next one is sent, must not finish
+  // that next command before its output (the output would then appear after the following echo).
+  let finished = false;
+  b.prompt('BUSY', false);                 // MATLAB still "busy" from something earlier, no READY yet
+  const next = s.sendLine('x = magic(4)').then(k => { finished = true; return k; });
+  b.prompt('READY', true);                 // the late READY
+  await new Promise(r => setTimeout(r, 100));
+  assert.strictEqual(finished, false, 'a READY without a BUSY for this command does not finish it');
+  b.emit('output', 'x = ...', 'out');
+  b.finishEval();                          // its evalResponse
+  assert.strictEqual(await next, 'ready');
+
+  // [verified, R2026b] dbcont is answered at once while the command that stopped at K>> keeps running: the session must
+  // stay busy until that command ends, so a next command is not sent into the resumed code.
+  const kb2 = s.sendLine("kb = 1; keyboard; disp('after')");
+  b.prompt('BUSY', false); b.prompt('DEBUG', true);
+  assert.strictEqual(await kb2, 'debug');
+  let contDone = false;
+  const cont = s.sendLine('dbcont').then(k => { contDone = true; return k; });
+  b.prompt('BUSY', false);
+  b.finishEval();                          // dbcont's evalResponse, at once
+  await new Promise(r => setTimeout(r, 150));
+  assert.strictEqual(contDone, false, 'dbcont is not done while the resumed command still runs');
+  assert.strictEqual(s.state, 'busy');
+  b.emit('output', 'after\n', 'out');
+  b.finishEval();                          // the keyboard line's evalResponse: really done
+  assert.strictEqual(await cont, 'ready');
+  assert.strictEqual(s.state, 'idle');
 
   console.log('foreignInput: all assertions passed');
 }

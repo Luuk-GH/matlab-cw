@@ -1,0 +1,3683 @@
+{
+ "plot(": [
+  {
+   "signatures": {
+    "mwdata": [
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        4,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "required",
+         "name": "X",
+         "purpose": "x-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none"
+        },
+        {
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        5,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "suggested",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "X",
+         "purpose": "x-coordinates",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        4,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "required",
+         "name": "tbl",
+         "purpose": "Source table",
+         "trailingPunctuation": ",",
+         "valueSummary": "table | timetable",
+         "widgetType": "none"
+        },
+        {
+         "kind": "required",
+         "name": "xvar",
+         "purpose": "Table variables containing x-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetType": "none"
+        },
+        {
+         "kind": "flag",
+         "name": "yvar",
+         "purpose": "Table variables containing y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        5,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "tbl",
+         "purpose": "Source table",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "required",
+         "name": "xvar",
+         "purpose": "Table variables containing x-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetData": {
+          "choices": []
+         },
+         "widgetType": "completion"
+        },
+        {
+         "kind": "flag",
+         "name": "yvar",
+         "purpose": "Table variables containing y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        4,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "duplicated": true,
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "required",
+         "name": "G",
+         "purpose": "Input graph",
+         "trailingPunctuation": ",",
+         "valueSummary": "graph object | digraph object",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "duplicated": true,
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "G",
+         "purpose": "Input graph",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "graph object | digraph object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "className": "alphaShape",
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "shp",
+         "purpose": "Alpha shape",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "alphaShape object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "className": "polyshape",
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "pgon",
+         "purpose": "Input polyshape",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "scalar | vector | matrix | multidimensional array",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 5
+         }
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     }
+    ],
+    "mwsize": [
+     10,
+     1
+    ],
+    "mwtype": "cell"
+   }
+  }
+ ],
+ "plot(x, ": [
+  {
+   "signatures": {
+    "mwdata": [
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        4,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "required",
+         "name": "X",
+         "purpose": "x-coordinates",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        },
+        {
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        5,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "name",
+         "name": "options",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "\"Color\"",
+             "\"LineStyle\"",
+             "\"LineWidth\"",
+             "\"Marker\"",
+             "\"MarkerIndices\"",
+             "\"MarkerEdgeColor\"",
+             "\"MarkerFaceColor\"",
+             "\"MarkerSize\"",
+             "\"XData\"",
+             "\"YData\"",
+             "\"ZData\"",
+             "\"AffectAutoLimits\"",
+             "\"AlignVertexCenters\"",
+             "\"BusyAction\"",
+             "\"ButtonDownFcn\"",
+             "\"Children\"",
+             "\"Clipping\"",
+             "\"ColorMode\"",
+             "\"ContextMenu\"",
+             "\"CreateFcn\"",
+             "\"DeleteFcn\"",
+             "\"DisplayName\"",
+             "\"HandleVisibility\"",
+             "\"HitTest\"",
+             "\"Interruptible\"",
+             "\"LineJoin\"",
+             "\"LineStyleMode\"",
+             "\"MarkerMode\"",
+             "\"Parent\"",
+             "\"PickableParts\"",
+             "\"Selected\"",
+             "\"SelectionHighlight\"",
+             "\"SeriesIndex\"",
+             "\"SourceTable\"",
+             "\"Tag\"",
+             "\"UserData\"",
+             "\"Visible\"",
+             "\"XDataMode\"",
+             "\"XDataSource\"",
+             "\"XVariable\"",
+             "\"YDataMode\"",
+             "\"YDataSource\"",
+             "\"YVariable\"",
+             "\"ZDataMode\"",
+             "\"ZDataSource\"",
+             "\"ZVariable\""
+            ],
+            "matchType": [
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal"
+            ]
+           },
+           "mwsize": [
+            46,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "suggested",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "X",
+         "purpose": "x-coordinates",
+         "repeatedCount": 1,
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "required",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "repeatedCount": 1,
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "repeatedCount": 1,
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "X",
+         "purpose": "x-coordinates",
+         "repeatedCount": 2,
+         "trailingPunctuation": ",",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "Y",
+         "purpose": "y-coordinates",
+         "repeatedCount": 2,
+         "trailingPunctuation": ",",
+         "valueSummary": "scalar | vector | matrix",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "LineSpec",
+         "purpose": "Line style, marker, and color",
+         "repeatedCount": 2,
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        7,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "required",
+         "name": "tbl",
+         "purpose": "Source table",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        },
+        {
+         "kind": "required",
+         "name": "xvar",
+         "purpose": "Table variables containing x-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetData": {
+          "choices": []
+         },
+         "widgetType": "completion"
+        },
+        {
+         "kind": "flag",
+         "name": "yvar",
+         "purpose": "Table variables containing y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        5,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "tbl",
+         "purpose": "Source table",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "required",
+         "name": "xvar",
+         "purpose": "Table variables containing x-coordinates",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetData": {
+          "choices": []
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        },
+        {
+         "kind": "flag",
+         "name": "yvar",
+         "purpose": "Table variables containing y-coordinates",
+         "trailingPunctuation": ",",
+         "valueSummary": "string array | character vector | cell array | pattern | numeric scalar or vector | logical vector | vartype()",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        4,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\charts\\objects\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "duplicated": true,
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "ax",
+         "purpose": "Target axes",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "Axes object | PolarAxes object | GeographicAxes object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "required",
+         "name": "G",
+         "purpose": "Input graph",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "graph object | digraph object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "secondary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "duplicated": true,
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "G",
+         "purpose": "Input graph",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "graph object | digraph object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "name",
+         "name": "options",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "\"LineStyle\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"LineWidth\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Marker\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceColor\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"MarkerEdgeColor\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"MarkerSize\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ArrowSize\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceAlpha\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"MarkerFaceColor\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"EdgeAlpha\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeCData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeLabel\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"XData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Layout\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"YData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeCData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ZData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeLabel\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"AlignVertexCenters\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"AlphaDataMapping\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"AmbientStrength\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"ArrowPosition\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"BackFaceLighting\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"BusyAction\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ButtonDownFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CData\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"CDataMapping\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"CDataMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Children\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Clipping\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"ContextMenu\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CreateFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"DeleteFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"DiffuseStrength\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"DisplayName\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeColorMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeFontAngle\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeFontName\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeFontSize\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeFontWeight\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeLabelColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeLabelMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeLighting\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"FaceLighting\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceNormals\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceNormalsMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Faces\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceVertexAlphaData\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceVertexCData\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceVertexCDataMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"HandleVisibility\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HitTest\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HoleEdgeAlpha\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"HoleEdgeAlphaMode\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"HoleEdgeColor\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"HoleEdgeColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"Interpreter\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Interruptible\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"LineJoin\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"NodeColorMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeFontAngle\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeFontName\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeFontSize\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeFontWeight\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeLabelColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeLabelMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Parent\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"PickableParts\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Selected\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SelectionHighlight\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SeriesIndex\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Shape\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"ShowArrows\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SpecularColorReflectance\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"SpecularExponent\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"SpecularStrength\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Tag\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"UserData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"VertexNormals\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"VertexNormalsMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Vertices\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Visible\"",
+             "matchType": "literal"
+            }
+           ],
+           "mwsize": [
+            85,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "h",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "className": "polyshape",
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "pgon",
+         "purpose": "Input polyshape",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "scalar | vector | matrix | multidimensional array",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "name",
+         "name": "options",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "\"LineStyle\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"LineWidth\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Marker\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"FaceColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"MarkerEdgeColor\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"MarkerSize\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"ArrowSize\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"FaceAlpha\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"MarkerFaceColor\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"EdgeAlpha\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeCData\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLabel\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"XData\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"Layout\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"YData\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeCData\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"ZData\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeColor\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeLabel\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"AlignVertexCenters\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"AlphaDataMapping\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"AmbientStrength\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"ArrowPosition\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"BackFaceLighting\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"BusyAction\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ButtonDownFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CData\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"CDataMapping\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"CDataMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Children\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Clipping\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ContextMenu\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CreateFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"DeleteFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"DiffuseStrength\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"DisplayName\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontAngle\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontName\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontSize\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontWeight\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLabelColor\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLabelMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLighting\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceColorMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceLighting\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceNormals\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceNormalsMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Faces\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceVertexAlphaData\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceVertexCData\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"FaceVertexCDataMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"HandleVisibility\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HitTest\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HoleEdgeAlpha\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HoleEdgeAlphaMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HoleEdgeColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HoleEdgeColorMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Interpreter\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"Interruptible\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"LineJoin\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontAngle\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontName\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontSize\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontWeight\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeLabelColor\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeLabelMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"Parent\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"PickableParts\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Selected\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SelectionHighlight\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SeriesIndex\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Shape\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ShowArrows\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"SpecularColorReflectance\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"SpecularExponent\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"SpecularStrength\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Tag\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"UserData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"VertexNormals\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"VertexNormalsMode\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Vertices\"",
+             "matchType": "literal",
+             "originalSignature": 9
+            },
+            {
+             "completion": "\"Visible\"",
+             "matchType": "literal"
+            }
+           ],
+           "mwsize": [
+            85,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 8
+      },
+      "className": "alphaShape",
+      "functionName": "plot",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "shp",
+         "purpose": "Alpha shape",
+         "trailingPunctuation": ",",
+         "value": "x",
+         "valueSummary": "alphaShape object",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "bounds": {
+          "left": 8,
+          "right": 8
+         },
+         "kind": "name",
+         "name": "options",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "\"LineStyle\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"LineWidth\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Marker\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"MarkerEdgeColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"MarkerSize\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ArrowSize\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"FaceAlpha\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"MarkerFaceColor\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeAlpha\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeCData\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLabel\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"XData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Layout\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"YData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeCData\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"ZData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeColor\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeLabel\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"AlignVertexCenters\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"AlphaDataMapping\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"AmbientStrength\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ArrowPosition\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"BackFaceLighting\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"BusyAction\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ButtonDownFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CDataMapping\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CDataMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Children\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Clipping\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"ContextMenu\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"CreateFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"DeleteFcn\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"DiffuseStrength\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"DisplayName\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"EdgeColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontAngle\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontName\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontSize\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeFontWeight\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLabelColor\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLabelMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"EdgeLighting\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"FaceLighting\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceNormals\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceNormalsMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Faces\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceVertexAlphaData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceVertexCData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"FaceVertexCDataMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HandleVisibility\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HitTest\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"HoleEdgeAlpha\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"HoleEdgeAlphaMode\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"HoleEdgeColor\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"HoleEdgeColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"Interpreter\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"Interruptible\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"LineJoin\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"NodeColorMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontAngle\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontName\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontSize\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeFontWeight\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeLabelColor\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"NodeLabelMode\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"Parent\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"PickableParts\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Selected\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SelectionHighlight\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SeriesIndex\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Shape\"",
+             "matchType": "literal",
+             "originalSignature": 8
+            },
+            {
+             "completion": "\"ShowArrows\"",
+             "matchType": "literal",
+             "originalSignature": 7
+            },
+            {
+             "completion": "\"SpecularColorReflectance\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SpecularExponent\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"SpecularStrength\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Tag\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"UserData\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"VertexNormals\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"VertexNormalsMode\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Vertices\"",
+             "matchType": "literal"
+            },
+            {
+             "completion": "\"Visible\"",
+             "matchType": "literal"
+            }
+           ],
+           "mwsize": [
+            85,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 7,
+          "right": 8
+         }
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\graphics\\math\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 8
+      }
+     }
+    ],
+    "mwsize": [
+     10,
+     1
+    ],
+    "mwtype": "cell"
+   }
+  }
+ ],
+ "linspace(0, ": [
+  {
+   "signatures": {
+    "bounds": {
+     "left": 0,
+     "right": 12
+    },
+    "duplicated": true,
+    "functionName": "linspace",
+    "inputArguments": {
+     "mwdata": [
+      {
+       "bounds": {
+        "left": 9,
+        "right": 10
+       },
+       "kind": "required",
+       "name": "x1",
+       "purpose": "Point interval",
+       "trailingPunctuation": ",",
+       "value": "0",
+       "valueSummary": "pair of scalars",
+       "widgetType": "none",
+       "wsbounds": {
+        "left": 9,
+        "right": 10
+       }
+      },
+      {
+       "bounds": {
+        "left": 12,
+        "right": 12
+       },
+       "kind": "required",
+       "name": "x2",
+       "purpose": "Point interval",
+       "status": "presenting",
+       "trailingPunctuation": ",",
+       "value": "",
+       "valueSummary": "pair of scalars",
+       "widgetType": "none",
+       "wsbounds": {
+        "left": 11,
+        "right": 12
+       }
+      },
+      {
+       "kind": "optional",
+       "name": "n",
+       "purpose": "Number of points",
+       "valueSummary": "100 (default) | real numeric scalar | NaN",
+       "widgetType": "none"
+      }
+     ],
+     "mwsize": [
+      3,
+      1
+     ],
+     "mwtype": "cell"
+    },
+    "outputArguments": {
+     "name": "y",
+     "widgetType": "none"
+    },
+    "promotion": "suggested",
+    "score": 10,
+    "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json",
+    "status": "presenting",
+    "wsbounds": {
+     "left": 0,
+     "right": 12
+    }
+   }
+  }
+ ],
+ "zeros(": [
+  {
+   "signatures": {
+    "mwdata": [
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "duplicated": true,
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "sz",
+         "purpose": "Size of each dimension (as separate arguments)",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer values",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "typename",
+         "purpose": "Data type (class) to create",
+         "valueSummary": "\"double\" (default) | \"single\" | \"logical\" | \"int8\" | \"uint8\" | ...",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "suggested",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "duplicated": true,
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "sz",
+         "purpose": "Size of each dimension (as separate arguments)",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer values",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "'like'",
+         "trailingPunctuation": ",",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "p",
+         "purpose": "Prototype of array to create",
+         "valueSummary": "array",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "n",
+         "purpose": "Size of square matrix",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer value",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "typename",
+         "purpose": "Data type (class) to create",
+         "valueSummary": "\"double\" (default) | \"single\" | \"logical\" | \"int8\" | \"uint8\" | ...",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "n",
+         "purpose": "Size of square matrix",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer value",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "'like'",
+         "trailingPunctuation": ",",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "p",
+         "purpose": "Prototype of array to create",
+         "valueSummary": "array",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "bounds": {
+        "left": 6,
+        "right": 6
+       },
+       "kind": "optional",
+       "name": "typename",
+       "purpose": "Data type (class) to create",
+       "status": "presenting",
+       "trailingPunctuation": ",",
+       "value": "",
+       "valueSummary": "\"double\" (default) | \"single\" | \"logical\" | \"int8\" | \"uint8\" | ...",
+       "widgetData": {
+        "choices": {
+         "mwdata": {
+          "completion": [
+           "\"double\"",
+           "\"single\"",
+           "\"logical\"",
+           "\"int8\"",
+           "\"uint8\"",
+           "\"int16\"",
+           "\"uint16\"",
+           "\"int32\"",
+           "\"uint32\"",
+           "\"int64\"",
+           "\"uint64\""
+          ],
+          "matchType": [
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal"
+          ]
+         },
+         "mwsize": [
+          11,
+          1
+         ],
+         "mwtype": "struct"
+        }
+       },
+       "widgetType": "completion",
+       "wsbounds": {
+        "left": 6,
+        "right": 6
+       }
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "'like'",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "completion": "\"like\"",
+           "matchType": "literal"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "required",
+         "name": "p",
+         "purpose": "Prototype of array to create",
+         "valueSummary": "array",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     }
+    ],
+    "mwsize": [
+     6,
+     1
+    ],
+    "mwtype": "cell"
+   }
+  }
+ ],
+ "y = mean(a, ": [
+  {
+   "signatures": {
+    "mwdata": [
+     {
+      "bounds": {
+       "left": 4,
+       "right": 12
+      },
+      "duplicated": true,
+      "functionName": "mean",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 9,
+          "right": 10
+         },
+         "kind": "required",
+         "name": "A",
+         "purpose": "Input data",
+         "trailingPunctuation": ",",
+         "value": "a",
+         "valueSummary": "vector | matrix | multidimensional array | table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 9,
+          "right": 10
+         }
+        },
+        {
+         "bounds": {
+          "left": 12,
+          "right": 12
+         },
+         "kind": "optional",
+         "name": "dim",
+         "purpose": "Dimension to operate along",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "positive integer scalar",
+         "widgetData": {
+          "choices": {
+           "completion": "\"all\"",
+           "matchType": "literal"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 11,
+          "right": 12
+         }
+        },
+        {
+         "bounds": {
+          "left": 12,
+          "right": 12
+         },
+         "kind": "optional",
+         "name": "options",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "\"default\"",
+             "\"double\"",
+             "\"native\"",
+             "\"includemissing\"",
+             "\"omitmissing\"",
+             "\"Weights\""
+            ],
+            "matchType": [
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal",
+             "literal"
+            ]
+           },
+           "mwsize": [
+            6,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 11,
+          "right": 12
+         }
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "keywords": "average",
+      "outputArguments": {
+       "name": "M",
+       "widgetType": "none"
+      },
+      "promotion": "suggested",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datafun\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datafun\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datafun\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\datetime\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\datetime\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 3,
+       "right": 12
+      }
+     },
+     {
+      "bounds": {
+       "left": 4,
+       "right": 12
+      },
+      "duplicated": true,
+      "functionName": "mean",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 9,
+          "right": 10
+         },
+         "kind": "required",
+         "name": "A",
+         "purpose": "Input data",
+         "trailingPunctuation": ",",
+         "value": "a",
+         "valueSummary": "vector | matrix | multidimensional array | table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 9,
+          "right": 10
+         }
+        },
+        {
+         "bounds": {
+          "left": 12,
+          "right": 12
+         },
+         "kind": "optional",
+         "name": "dim",
+         "purpose": "Dimension to operate along",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "positive integer scalar",
+         "widgetData": {
+          "choices": {
+           "completion": "\"all\"",
+           "matchType": "literal",
+           "originalSignature": 0
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 11,
+          "right": 12
+         }
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "M",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\datetime\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 3,
+       "right": 12
+      }
+     },
+     {
+      "bounds": {
+       "left": 4,
+       "right": 12
+      },
+      "duplicated": true,
+      "functionName": "mean",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 9,
+          "right": 10
+         },
+         "kind": "required",
+         "name": "A",
+         "purpose": "Input data",
+         "trailingPunctuation": ",",
+         "value": "a",
+         "valueSummary": "vector | matrix | multidimensional array | table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 9,
+          "right": 10
+         }
+        },
+        {
+         "bounds": {
+          "left": 12,
+          "right": 12
+         },
+         "kind": "optional",
+         "name": "vecdim",
+         "purpose": "Vector of dimensions",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "vector of positive integers",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 11,
+          "right": 12
+         }
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "M",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\datetime\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 3,
+       "right": 12
+      }
+     },
+     {
+      "bounds": {
+       "left": 4,
+       "right": 12
+      },
+      "duplicated": true,
+      "functionName": "mean",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 9,
+          "right": 10
+         },
+         "kind": "required",
+         "name": "A",
+         "purpose": "Input data",
+         "trailingPunctuation": ",",
+         "value": "a",
+         "valueSummary": "vector | matrix | multidimensional array | table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 9,
+          "right": 10
+         }
+        },
+        {
+         "bounds": {
+          "left": 12,
+          "right": 12
+         },
+         "kind": "optional",
+         "name": "vecdim",
+         "purpose": "Vector of dimensions",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "vector of positive integers",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 11,
+          "right": 12
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "M",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\datetime\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 3,
+       "right": 12
+      }
+     },
+     {
+      "bounds": {
+       "left": 4,
+       "right": 12
+      },
+      "duplicated": true,
+      "functionName": "mean",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 9,
+          "right": 10
+         },
+         "kind": "required",
+         "name": "A",
+         "purpose": "Input data",
+         "trailingPunctuation": ",",
+         "value": "a",
+         "valueSummary": "vector | matrix | multidimensional array | table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 9,
+          "right": 10
+         }
+        },
+        {
+         "bounds": {
+          "left": 12,
+          "right": 12
+         },
+         "kind": "optional",
+         "name": "'all'",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "completion": "\"all\"",
+           "matchType": "literal"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 11,
+          "right": 12
+         }
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "M",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\datetime\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 3,
+       "right": 12
+      }
+     },
+     {
+      "bounds": {
+       "left": 4,
+       "right": 12
+      },
+      "duplicated": true,
+      "functionName": "mean",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 9,
+          "right": 10
+         },
+         "kind": "required",
+         "name": "A",
+         "purpose": "Input data",
+         "trailingPunctuation": ",",
+         "value": "a",
+         "valueSummary": "vector | matrix | multidimensional array | table | timetable",
+         "widgetType": "none",
+         "wsbounds": {
+          "left": 9,
+          "right": 10
+         }
+        },
+        {
+         "bounds": {
+          "left": 12,
+          "right": 12
+         },
+         "kind": "optional",
+         "name": "'all'",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "completion": "\"all\"",
+           "matchType": "literal"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 11,
+          "right": 12
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "M",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\datetime\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\datatypes\\duration\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 3,
+       "right": 12
+      }
+     }
+    ],
+    "mwsize": [
+     6,
+     1
+    ],
+    "mwtype": "cell"
+   }
+  }
+ ],
+ "mean_of(": [
+  {
+   "widgetType": "none"
+  }
+ ],
+ "disp(": [
+  {
+   "signatures": {
+    "mwdata": [
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "functionName": "disp",
+      "inputArguments": {
+       "bounds": {
+        "left": 5,
+        "right": 5
+       },
+       "kind": "required",
+       "name": "X",
+       "purpose": "Input array",
+       "status": "presenting",
+       "trailingPunctuation": ",",
+       "value": "",
+       "valueSummary": "array",
+       "widgetType": "none",
+       "wsbounds": {
+        "left": 5,
+        "right": 5
+       }
+      },
+      "promotion": "suggested",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\lang\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 5
+      },
+      "duplicated": true,
+      "functionName": "disp",
+      "inputArguments": {
+       "bounds": {
+        "left": 5,
+        "right": 5
+       },
+       "kind": "required",
+       "name": "obj",
+       "status": "presenting",
+       "trailingPunctuation": ",",
+       "value": "",
+       "widgetType": "none",
+       "wsbounds": {
+        "left": 5,
+        "right": 5
+       }
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\serial\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\shared\\instrument\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 5
+      }
+     }
+    ],
+    "mwsize": [
+     2,
+     1
+    ],
+    "mwtype": "cell"
+   }
+  }
+ ]
+}

@@ -10,7 +10,7 @@ import { tags as t } from '@lezer/highlight';
 import { callContext, completionPrefix } from '../../language/matlabSyntax';
 import { matlabStreamParser } from './matlabMode';
 import { parseAnchors, LinkHit as Hit } from './anchors';
-import type { CompletionItem, FromWebview, HelpResult, InputMode, Snapshot, TestAction, ToWebview } from '../protocol';
+import type { CompletionItem, FromWebview, HelpResult, InputMode, SignatureHelp, Snapshot, TestAction, ToWebview } from '../protocol';
 
 declare function acquireVsCodeApi(): { postMessage(m: FromWebview): void };
 const vscode = acquireVsCodeApi();
@@ -20,6 +20,7 @@ const outputEl = document.getElementById('output')!;
 const promptEl = document.getElementById('prompt')!;
 const stopEl = document.getElementById('stop') as HTMLButtonElement;
 const hintEl = document.getElementById('hint')!;
+const sigEl = document.getElementById('sigbox')!;
 const testHooks = document.body.dataset.testHooks === 'true';
 
 /** Output blocks longer than this many lines are collapsed once their command finishes. */
@@ -411,6 +412,14 @@ function submit(view: EditorView): boolean {
 
 const stop = () => { post({ type: 'stop' }); return true; };
 
+/** Esc: close the completion list, else the signature box, else clear the line. */
+function escapeKey(v: EditorView): boolean {
+  if (completionStatus(v.state)) { return closeCompletion(v); }
+  if (!sigEl.hidden) { hideSignature('dismiss'); return true; }
+  if (v.state.doc.length) { setInput(v, ''); histIndex = -1; return true; }
+  return false;
+}
+
 const inputKeys = Prec.high(keymap.of([
   { key: 'Enter', run: v => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : submit(v)) },
   { key: 'Shift-Enter', run: insertNewlineAndIndent },
@@ -426,11 +435,7 @@ const inputKeys = Prec.high(keymap.of([
   },
   {
     key: 'Escape',
-    run: v => {
-      if (completionStatus(v.state)) { return closeCompletion(v); }
-      if (v.state.doc.length) { setInput(v, ''); histIndex = -1; return true; }
-      return false;
-    },
+    run: v => escapeKey(v),
   },
   {
     key: 'Tab',
@@ -445,6 +450,8 @@ const inputKeys = Prec.high(keymap.of([
   },
   { key: 'Ctrl-c', run: v => (v.state.selection.main.empty && (mode === 'busy' || mode === 'input' || mode === 'pause') ? stop() : false) },
   { key: 'Ctrl-l', run: () => { post({ type: 'clear' }); return true; } },
+  { key: 'Alt-ArrowDown', run: () => flipSignature(1) },
+  { key: 'Alt-ArrowUp', run: () => flipSignature(-1) },
 ]));
 
 const theme = EditorView.theme({
@@ -513,7 +520,24 @@ async function updateHint(): Promise<void> {
   const head = editor.state.selection.main.head;
   const before = editor.state.sliceDoc(0, head);
   const call = canQuery() ? callContext(before) : undefined;
-  if (!call) { hintName = ''; hintEl.textContent = ''; return; }
+  if (!call) { hintName = ''; hintEl.textContent = ''; hideSignature('leave'); return; }
+  // Closed with Esc: stays closed for this call (same function, same opening position) until the cursor leaves it.
+  const callKey = call.name + "@" + before.lastIndexOf(call.name + "(");
+  if (sigDismissed && sigDismissedKey !== callKey) { sigDismissed = false; }
+  if (sigDismissed) { return; }
+  sigCallKey = callKey;
+  // MATLAB's own signature help (forms, argument purposes and values), like the editor's parameter hints.
+  const code = editor.state.doc.toString();
+  const sh = await request<SignatureHelp>(id => ({ type: 'signature', id, code, offset: head }), 4000);
+  if (editor.state.doc.toString() !== code || editor.state.selection.main.head !== head) { return; }   // typed on
+  if (sigDismissed) { return; }
+  if (sh && sh.forms.length) {
+    hintName = '';
+    hintEl.textContent = '';
+    showSignature(sh, call.name, before.lastIndexOf(call.name));
+    return;
+  }
+  hideSignature('quiet');
   if (call.name === hintName && hintEl.textContent) { return; }
   hintName = call.name;
   const r = await fetchHelp(call.name);
@@ -531,6 +555,86 @@ async function updateHint(): Promise<void> {
     d.textContent = '  ' + (first.length > 160 ? first.slice(0, 157) + '…' : first);
     hintEl.append(d);
   }
+}
+
+// ---- signature box (like the editor's parameter hints): "ⓘ plot(Y,LineSpec,options)  1 of 10 ▾" ----
+let sigHelp: SignatureHelp | undefined;
+let sigForm = 0;
+let sigName = '';
+let sigAnchor = 0;
+/** Esc closes the box until the cursor leaves the call. */
+let sigDismissed = false;
+let sigDismissedKey = "";
+/** The call the box is showing (name and where its "(" is). */
+let sigCallKey = "";
+function showSignature(help: SignatureHelp, name: string, anchor: number): void {
+  if (name !== sigName) { sigForm = 0; }
+  sigName = name;
+  sigAnchor = Math.max(0, anchor);
+  sigHelp = help;
+  sigForm = Math.min(sigForm, help.forms.length - 1);
+  renderSignature();
+}
+/** 'leave': the cursor left the call (forget it); 'dismiss': Esc; 'quiet': just hide (no signature data). */
+function hideSignature(how: 'leave' | 'dismiss' | 'quiet' = 'leave'): void {
+  if (how === 'dismiss') { sigDismissed = true; sigDismissedKey = sigCallKey; } else if (how === 'leave') { sigDismissed = false; sigName = ''; }
+  sigHelp = undefined;
+  sigEl.hidden = true;
+  sigEl.textContent = '';
+}
+function flipSignature(step: number): boolean {
+  if (!sigHelp || sigEl.hidden || sigHelp.forms.length < 2) { return false; }
+  sigForm = (sigForm + step + sigHelp.forms.length) % sigHelp.forms.length;
+  renderSignature();
+  return true;
+}
+function renderSignature(): void {
+  if (!sigHelp) { return; }
+  const f = sigHelp.forms[sigForm];
+  sigEl.textContent = '';
+  const head = document.createElement('div');
+  head.className = 'sig-head';
+  const icon = document.createElement('span');
+  icon.className = 'sig-icon';
+  icon.textContent = 'i';
+  icon.setAttribute('aria-hidden', 'true');
+  const label = document.createElement('span');
+  label.className = 'sig-label';
+  label.append(`${f.functionName}(`);
+  f.params.forEach((p, i) => {
+    if (i) { label.append(','); }
+    const s = document.createElement('span');
+    s.textContent = p.name;
+    if (i === f.active) { s.className = 'active'; }
+    label.append(s);
+  });
+  label.append(')');
+  head.append(icon, label);
+  if (sigHelp.forms.length > 1) {
+    const count = document.createElement('button');
+    count.className = 'sig-count';
+    count.title = 'Other forms (Alt+Up / Alt+Down)';
+    count.textContent = `${sigForm + 1} of ${sigHelp.forms.length} ▾`;
+    count.addEventListener('mousedown', e => { e.preventDefault(); flipSignature(1); });
+    head.append(count);
+  }
+  sigEl.append(head);
+  const p = f.params[f.active];
+  if (p && (p.purpose || p.valueSummary)) {
+    const doc = document.createElement('div');
+    doc.className = 'sig-doc';
+    if (p.purpose) { const d = document.createElement('div'); d.className = 'sig-purpose'; d.textContent = p.purpose; doc.append(d); }
+    if (p.valueSummary) { const d = document.createElement('div'); d.className = 'sig-values'; d.textContent = p.valueSummary; doc.append(d); }
+    sigEl.append(doc);
+  }
+  sigEl.hidden = false;
+  // Float just above the input line, starting at the function name (kept inside the panel).
+  const c = editor.coordsAtPos(Math.min(sigAnchor, editor.state.doc.length));
+  const inputTop = (document.getElementById('inputRow') ?? editor.dom).getBoundingClientRect().top;
+  const width = sigEl.offsetWidth;
+  const left = Math.max(4, Math.min((c?.left ?? 40) - 26, window.innerWidth - width - 8));
+  sigEl.style.left = `${left}px`;
+  sigEl.style.top = `${Math.max(4, Math.min(c?.top ?? inputTop, inputTop) - sigEl.offsetHeight - 4)}px`;
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -555,7 +659,7 @@ function setMode(m: InputMode, prompt?: string): void {
   if (m === 'input' || m === 'pause' || (wasRunning && m !== 'busy')) {
     if (document.hasFocus()) { editor.focus(); }
   }
-  if (!canQuery()) { closeCompletion(editor); hintEl.textContent = ''; }
+  if (!canQuery()) { closeCompletion(editor); hintEl.textContent = ''; hideSignature(); }
 }
 
 stopEl.addEventListener('click', () => { stop(); editor.focus(); });
@@ -574,7 +678,7 @@ window.addEventListener('message', (e: MessageEvent<ToWebview>) => {
     case 'clear': clearOutput(); break;
     case 'history': history = [...m.entries]; break;
     case 'focus': editor.focus(); break;
-    case 'completions': case 'help': {
+    case 'completions': case 'help': case 'signature': {
       const v = m.type === 'completions' ? m.items : m.result;
       waiting.get(m.id)?.(v);
       waiting.delete(m.id);
@@ -603,7 +707,8 @@ async function runTest(id: number, a: TestAction): Promise<void> {
         'Shift-Enter': () => insertNewlineAndIndent(v),
         'ArrowUp': () => historyMove(v, -1),
         'ArrowDown': () => historyMove(v, 1),
-        'Escape': () => { if (completionStatus(v.state)) { return closeCompletion(v); } setInput(v, ''); return true; },
+        'Escape': () => escapeKey(v),
+        'Alt-ArrowDown': () => flipSignature(1),
         'Tab': () => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : startCompletion(v)),
         'Ctrl-Space': () => startCompletion(v),
       };
@@ -662,6 +767,8 @@ function snapshot(): Snapshot {
     collapsed: outputEl.querySelectorAll('.block.collapsed').length,
     completions: currentCompletions(editor.state).map(c => c.label),
     tooltip: hintEl.textContent ?? '',
+    signature: sigEl.hidden ? '' : sigEl.textContent ?? '',
+    signatureActive: sigEl.hidden ? '' : sigEl.querySelector('.sig-label .active')?.textContent ?? '',
     stopVisible: !stopEl.hidden,
     highlighted: [...classes],
   };

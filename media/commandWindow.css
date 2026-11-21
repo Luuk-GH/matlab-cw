@@ -110,6 +110,57 @@ button.toggle:hover { background: var(--vscode-button-secondaryHoverBackground);
 #hint:not(:empty) { padding-top: 2px; border-top: 1px dashed var(--vscode-panel-border, transparent); }
 .hint-sig { color: var(--cw-fg); }
 
+/* Signature box: styled like the editor's parameter hints (hover widget colours of the current theme) */
+#sigbox {
+  position: fixed;
+  z-index: 40;
+  max-width: min(92vw, 720px);
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-editor-foreground));
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, rgba(128, 128, 128, 0.5)));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 13px);
+  line-height: 1.45;
+}
+#sigbox[hidden] { display: none; }
+.sig-head { display: flex; align-items: center; gap: 8px; padding: 2px 6px 2px 6px; white-space: nowrap; }
+.sig-icon {
+  flex: 0 0 auto;
+  width: 14px; height: 14px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: bold 10px var(--vscode-font-family, sans-serif);
+  color: var(--vscode-editorHoverWidget-background, #252526);
+  background: var(--vscode-icon-foreground, #c5c5c5);
+}
+.sig-label { overflow: hidden; text-overflow: ellipsis; }
+.sig-label .active {
+  font-weight: bold;
+  text-decoration: underline;
+  color: var(--vscode-editorHoverWidget-highlightForeground, var(--vscode-textLink-foreground));
+}
+.sig-count {
+  margin-left: auto;
+  padding: 0 2px 0 10px;
+  border: none;
+  background: none;
+  color: inherit;
+  opacity: 0.85;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sig-count:hover { opacity: 1; }
+.sig-doc {
+  border-top: 1px solid var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, rgba(128, 128, 128, 0.5)));
+  padding: 3px 8px 4px 28px;
+  font-family: var(--vscode-font-family, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  white-space: normal;
+}
+.sig-purpose { color: var(--vscode-descriptionForeground, var(--cw-dim)); }
+
 /* Input line */
 #inputRow {
   flex: 0 0 auto;

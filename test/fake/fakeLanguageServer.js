@@ -826,6 +826,11 @@ function fevalImpl(fn, args, ws) {
     case 'cd': if (args[0]) { changeDir(String(args[0])); } return [cwd];
     case 'pwd': return [cwd];
     case 'version': return [`9.99.0 (${RELEASE})`];
+    // [verified, R2026b] MATLAB's signature data, as recorded for a few inputs (other inputs: no signatures).
+    case 'matlabls.internal.getCompletions': {
+      const recorded = require('../fixtures/getCompletions-R2026b.json');
+      return recorded[String(args[0])] ?? [{ widgetType: 'none' }];
+    }
     case 'which': return [whichName(String(args[0]), ws)];
     // [docs] who() returns a cell array of names; [guess] it arrives as a JSON array of strings (S5).
     case 'who': return [[...ws.keys()]];

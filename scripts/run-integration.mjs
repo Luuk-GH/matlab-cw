@@ -19,15 +19,25 @@ fs.rmSync(path.join(base, 'user-data'), { recursive: true, force: true });
 
 const codeExe = process.env.VSCODE_EXE
   ?? path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Microsoft VS Code', 'Code.exe');
+const real = process.argv.includes('--real');
+// Real MATLAB: run on a temporary copy of the test scripts, so breakpoints set on the project's own files (e.g. from
+// the user's VS Code, [verified]) cannot stop the tests.
+let workspace = path.join(root, 'test', 'workspace');
+if (real) {
+  const copy = path.join(base, 'workspace');
+  fs.rmSync(copy, { recursive: true, force: true });
+  fs.mkdirSync(copy, { recursive: true });
+  for (const f of fs.readdirSync(workspace)) { fs.copyFileSync(path.join(workspace, f), path.join(copy, f)); }
+  workspace = copy;
+}
 const args = [
   `--extensionDevelopmentPath=${root}`,
   `--extensionTestsPath=${path.join(root, 'dist', 'integration.test.js')}`,
   `--user-data-dir=${path.join(base, 'user-data')}`,
   `--extensions-dir=${path.join(base, 'extensions')}`,
   '--disable-extensions', '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust', '--new-window',
-  path.join(root, 'test', 'workspace'),
+  workspace,
 ];
-const real = process.argv.includes('--real');
 let connector;
 let env;
 if (real) {

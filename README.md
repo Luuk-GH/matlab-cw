@@ -20,16 +20,19 @@ The *MATLAB CW* tab in the bottom panel:
 - **Links:** `Error in myfun (line 12)`, `Error using …`, `File: … Line: …` and file paths open the file at that line.
 - **Input line** with MATLAB highlighting: **Enter** runs, **Shift+Enter** adds a line, **↑/↓** recall earlier
   commands that start with what you typed, **Esc** clears.
-- **Completion pop-up** from MATLAB itself (variables, fields, functions; **Ctrl+Space** or **Tab**), a **help
-  tooltip** when you hover a name, and the **usage** of the function you are calling under the input line. These only
-  ask MATLAB when it is idle.
+- **Completion pop-up** from MATLAB itself (variables, fields, functions; **Ctrl+Space** or **Tab**) and a **help
+  tooltip** when you hover a name.
+- **Signature help** like the editor's: while you type a call, a box shows MATLAB's own forms of the function
+  (`plot(Y,LineSpec,options)  1 of 6`), the current argument in bold, and what it is (`y-coordinates`,
+  `scalar | vector | matrix`). **Alt+↑/↓** or a click on "1 of 6" shows the other forms, **Esc** closes it. Functions
+  without signature data (your own) show their help line instead. All of this only asks MATLAB when it is idle.
 - **Stop** button (or Ctrl+C in the input line) while code runs; Enter queues the next command.
 - **Never hangs:** `input()` switches the input line to answering, `pause` waits for Enter, `keyboard`/breakpoints
   give a `K>>` prompt. An `input()` or `pause` from a command started elsewhere (the MATLAB terminal) is left to
   that window, because MATLAB sends a command's output only to the window that started it.
 - **Run from the editor into the Command Window:** in a `.m` file **F5** runs the file, **Ctrl+Enter** the current
   `%%` section, **Shift+Enter** the selection (also in the editor's Run menu and context menu). The editor keeps the
-  focus. Turn off `matlabCommandWindow.runInCommandWindow` to give these keys back to the MATLAB extension.
+  focus; a file shows as its name (`>> myscript`). Turn off `matlabCommandWindow.runInCommandWindow` to give these keys back to the MATLAB extension.
 
 Everything else (debugger, Workspace, tests, linting, AI agents) stays with MathWorks' tools.
 

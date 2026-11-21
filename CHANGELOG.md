@@ -18,6 +18,11 @@
   `matlabCommandWindow.runInCommandWindow`).
 - An `input()`/`pause` started from another window (the MATLAB terminal) no longer takes over the Command Window's
   input line: MATLAB sends those prompts to every window but the output only to the one that started the command.
+- Signature help like the editor's parameter hints: MATLAB's own function forms with the current argument, its
+  purpose and allowed values (from `matlabls.internal.getCompletions` of the MATLAB extension); Alt+Up/Down for
+  other forms. Run File shows the script name instead of `run('<full path>')`.
+- Fixed on real MATLAB: a late READY could finish the next command before its output arrived (output appeared after
+  the next echo); after `dbcont` the session treated MATLAB as idle while the resumed command still ran.
 - Fixed after testing on real MATLAB (R2026b): error text showed MATLAB's `{\b … }\b` markers; the hidden `run()`
   frame left its code and `^^^` lines behind; the `input()` prompt text was lost (MATLAB sends it as an array); the
   window stayed "busy" after a command started elsewhere; `keyboard` right after an `input()` answer could hang

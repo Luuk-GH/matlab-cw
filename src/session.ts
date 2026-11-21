@@ -5,6 +5,7 @@ import { readSharedSession, SharedSession, sessionFilePath } from './backend/sha
 import { CompletionCandidate } from './backend/types';
 import { ConsoleView } from './consoleView';
 import { HelpInfo, parseHelp } from './language/helpText';
+import { parseSignatures, SignatureHelp } from './language/signatures';
 import { describeServer, resolveServer } from './locator';
 import { InputSource, MatlabSession, PromptKind, QueryResult, SessionState } from './matlabSession';
 import { matlabString, textOf } from './sessionText';
@@ -131,6 +132,30 @@ export class SessionManager implements vscode.Disposable {
     if (!r || !r.ok) { return undefined; }
     const names = flatStrings(r.outputs[0]);
     return names.filter(n => n.startsWith(prefix)).map(n => [n, 'v']);
+  }
+
+  /** Which MATLAB function gives signature data; undefined after both failed (then the help text is used). */
+  private signatureFns: string[] = ['matlabls.internal.getCompletions', 'matlabls.handlers.completions.getCompletions'];
+
+  /**
+   * MATLAB's own signature help for the call the cursor is in (forms, argument purposes and values), from the
+   * MATLAB extension's matlabls.internal.getCompletions ([verified, R2026b + extension 1.3.16]). Only when idle.
+   * [verified] In extension 1.3.16 the documented wrapper matlabls.handlers.completions.getCompletions calls a function
+   * that does not exist, so the internal one is tried first.
+   */
+  async signatureFor(code: string, offset: number): Promise<SignatureHelp | undefined> {
+    const s = this.session;
+    if (!s || (s.state !== 'idle' && s.state !== 'debug')) { return undefined; }
+    for (const fn of [...this.signatureFns]) {
+      const r = await withTimeout(s.query(fn, [code, '', offset], { background: true }), 3000) as QueryResult | undefined;
+      if (!r) { return undefined; }   // busy or slow: try again on the next keystroke
+      if (r.ok) { return parseSignatures(r.outputs[0]); }
+      if (r.cancelled) { return undefined; }
+      // Not available in this extension version: do not try it again.
+      this.log.info(`signature help: ${fn} failed (${r.error?.message ?? 'error'}); not using it`);
+      this.signatureFns = this.signatureFns.filter(f => f !== fn);
+    }
+    return undefined;
   }
 
   /** Usage lines and a one-line description from help(), cached until a .m file is saved. Only when idle. */

@@ -40,6 +40,12 @@ interface Pending extends Job {
   resolveCommand?: (kind: PromptKind) => void;
   resolveQuery?: (r: QueryResult) => void;
   sawBusy?: boolean;
+  /** The prompt state MATLAB had reported when the command was sent. */
+  sentFrom?: PromptState;
+  /** Its evalResponse has arrived. */
+  evalDone?: boolean;
+  /** Its evalResponse arrived while commands stopped at K>> were still running. */
+  waitingForSuspended?: boolean;
   finished?: boolean;
 }
 
@@ -62,14 +68,14 @@ export interface MatlabSessionEvents {
 
 /** After an eval response, how long to wait for the prompt event that tells READY from DEBUG. */
 const PROMPT_SETTLE_MS = 60;
-/** Prompt states in which MATLAB is running something. */
-const BUSY_STATES = new Set<PromptState>(['BUSY', 'MORE', 'COMPLETING_BLOCK']);
 
 export class MatlabSession extends EventEmitter {
   private _state: SessionState = 'starting';
   private readonly queue = new CommandQueue<Pending>(p => this.send(p));
   private lastPrompt: PromptState = 'INITIALIZING';
   private inputPrompt = '';
+  /** Commands that stopped at K>> (finished as 'debug') whose eval has not ended yet. */
+  private readonly suspended = new Set<Pending>();
   /** True while MATLAB waits for input()/pause for a command that is not ours (reported once). */
   private foreignWait = false;
   private _release: string | null = null;
@@ -192,11 +198,9 @@ export class MatlabSession extends EventEmitter {
     if (p.kind === 'command') {
       try { p.onSend?.(); } catch (e) { this.log(`onSend failed: ${(e as Error).message}`); }
       this.setState('busy');
-      // [verified, R2026b] MATLAB does not always send READY after a command (e.g. after an input() answer it can stay
-      // "BUSY" until the next prompt), and then the next command goes straight to READY/DEBUG without a new BUSY.
-      // When the last state MATLAB reported is already busy, count that as this command's BUSY.
-      p.sawBusy = BUSY_STATES.has(this.lastPrompt);
-      this.backend.eval(p.line).then(() => this.onEvalResponse(p), () => this.finish(p, 'cancelled'));
+      p.sawBusy = false;
+      p.sentFrom = this.lastPrompt;
+      this.backend.eval(p.line).then(() => { p.evalDone = true; this.onEvalResponse(p); }, () => { p.evalDone = true; this.finish(p, 'cancelled'); });
       return;
     }
     this.backend.feval(p.fn!, p.nargout ?? 1, p.args ?? []).then(
@@ -235,7 +239,11 @@ export class MatlabSession extends EventEmitter {
     if (isIdle || state === 'READY' || state === 'DEBUG') {
       const kind = state === 'DEBUG' ? 'debug' : 'ready';
       if (command) {
-        if (command.sawBusy) { this.finish(command, kind); }
+        // [verified, R2026b] MATLAB does not always send READY after a command (e.g. after an input() answer it can
+        // stay "BUSY"), and the next command may then go straight to DEBUG without a new BUSY (keyboard). A DEBUG prompt
+        // counts when MATLAB was not at K>> already. A READY without BUSY may be a late one of the previous command:
+        // for that case the command finishes on its evalResponse instead (so its output is never cut off).
+        if (command.sawBusy || (kind === 'debug' && command.sentFrom !== 'DEBUG')) { this.finish(command, kind); }
         return;
       }
       // No command of ours in flight (e.g. MATLAB finished something the language server started).
@@ -248,7 +256,23 @@ export class MatlabSession extends EventEmitter {
   }
 
   private onEvalResponse(p: Pending): void {
-    if (p.finished) { return; }
+    if (p.finished) {
+      // A command that stopped at K>> has now really ended (after dbcont/dbquit): MATLAB may be idle again.
+      if (this.suspended.delete(p)) { this.resumeWaiting(); }
+      return;
+    }
+    // [verified, R2026b] After dbcont/dbstep MATLAB answers the dbcont at once, while the command that stopped at K>>
+    // keeps running. Wait for that command (or an idle prompt) before treating MATLAB as idle again.
+    if (this.suspended.size > 0) {
+      p.waitingForSuspended = true;
+      // Safety net: if MATLAB is idle (>> or K>>) and nothing else arrives, do not wait forever.
+      setTimeout(() => {
+        if (!p.finished && p.waitingForSuspended && (this.lastPrompt === 'READY' || this.lastPrompt === 'DEBUG')) {
+          this.finish(p, this.lastPrompt === 'DEBUG' ? 'debug' : 'ready');
+        }
+      }, 2000);
+      return;
+    }
     // The prompt notification that says READY or DEBUG may come just after the response.
     setTimeout(() => {
       if (p.finished) { return; }
@@ -256,9 +280,21 @@ export class MatlabSession extends EventEmitter {
     }, PROMPT_SETTLE_MS);
   }
 
+  /** The command waiting for suspended (K>>) commands can finish once they have all ended. */
+  private resumeWaiting(): void {
+    const cur = this.queue.current;
+    if (this.suspended.size === 0 && cur && cur.kind === 'command' && cur.waitingForSuspended && !cur.finished) {
+      cur.waitingForSuspended = false;
+      this.onEvalResponse(cur);
+    }
+  }
+
   private finish(p: Pending, kind: PromptKind): void {
     if (p.finished) { return; }
     p.finished = true;
+    // Stopped at K>> with its eval still running: remember it until its evalResponse arrives.
+    if (kind === 'debug' && p.kind === 'command' && !p.evalDone) { this.suspended.add(p); }
+    if (kind === 'ready') { this.suspended.clear(); }   // back at >>: nothing is suspended any more
     if (this.queue.current === p) {
       if (kind !== 'cancelled') { this.setState(kind === 'debug' ? 'debug' : 'idle'); }
       this.queue.prompt(this._state !== 'exited', done => {

@@ -179,6 +179,11 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
           this.post({ type: 'completions', id: m.id, items: r ? r.map(([label, kind]) => ({ label, kind })) : null });
           break;
         }
+        case 'signature': {
+          const ok = this.mode === 'ready' || this.mode === 'debug';
+          this.post({ type: 'signature', id: m.id, result: (ok ? await this.session.signatureFor(m.code, m.offset) : undefined) ?? null });
+          break;
+        }
         case 'help':
           this.post({ type: 'help', id: m.id, result: await this.help(m.name) });
           break;
@@ -238,6 +243,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
 <body data-test-hooks="${testHooks}" data-nonce="${nonce}">
 <div id="output" role="log" aria-live="polite" tabindex="-1"></div>
 <div id="hint" aria-live="polite"></div>
+<div id="sigbox" role="tooltip" hidden></div>
 <div id="inputRow">
   <span id="prompt">&gt;&gt;</span>
   <div id="editor"></div>

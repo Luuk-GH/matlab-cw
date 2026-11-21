@@ -29,7 +29,8 @@ export async function runFile(session: SessionManager): Promise<void> {
   }
   if (doc.isDirty && !(await doc.save())) { return; }
   // run() changes to the file's folder for the run and back, so scripts and functions off the path work too.
-  await session.execute(`run(${matlabString(doc.uri.fsPath)})`);
+  // The window shows just the script name, like typing it (the user's request).
+  await session.execute(`run(${matlabString(doc.uri.fsPath)})`, path.basename(doc.fileName, path.extname(doc.fileName)));
 }
 
 export async function runSection(session: SessionManager): Promise<void> {

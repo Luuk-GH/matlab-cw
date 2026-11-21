@@ -10,6 +10,8 @@ export type InputMode =
   | 'exited';   // no session: Enter starts one and runs the command
 
 export interface CompletionItem { label: string; kind: 'v' | 'f' | 'k' | 'F'; }
+export type { SignatureHelp, SignatureForm, SignatureParam } from '../language/signatures';
+import type { SignatureHelp } from '../language/signatures';
 
 export interface HelpResult {
   name: string;
@@ -32,6 +34,7 @@ export type ToWebview =
   | { type: 'history'; entries: string[] }
   | { type: 'completions'; id: number; items: CompletionItem[] | null }
   | { type: 'help'; id: number; result: HelpResult | null }
+  | { type: 'signature'; id: number; result: SignatureHelp | null }
   | { type: 'focus' }
   | { type: 'test'; id: number; action: TestAction };
 
@@ -42,6 +45,7 @@ export type FromWebview =
   | { type: 'stop' }
   | { type: 'complete'; id: number; prefix: string; code: string; offset: number }
   | { type: 'help'; id: number; name: string }
+  | { type: 'signature'; id: number; code: string; offset: number }
   | { type: 'openFile'; file: string; line?: number }
   | { type: 'openFunction'; name: string; line?: number }
   | { type: 'clear' }
@@ -51,7 +55,7 @@ export type FromWebview =
 export type TestAction =
   | { kind: 'snapshot' }
   | { kind: 'type'; text: string }
-  | { kind: 'key'; key: 'Enter' | 'Shift-Enter' | 'ArrowUp' | 'ArrowDown' | 'Escape' | 'Tab' | 'Ctrl-Space' }
+  | { kind: 'key'; key: 'Enter' | 'Shift-Enter' | 'ArrowUp' | 'ArrowDown' | 'Escape' | 'Tab' | 'Ctrl-Space' | 'Alt-ArrowDown' }
   | { kind: 'clickLink'; index: number }
   | { kind: 'toggleCollapse'; index: number }
   | { kind: 'clickStop' }
@@ -69,6 +73,8 @@ export interface Snapshot {
   collapsed: number;       // number of collapsed output blocks
   completions: string[];   // labels in the open completion pop-up
   tooltip: string;         // text of the open help tooltip / hint
+  signature: string;       // text of the signature box ('' when closed)
+  signatureActive: string; // the highlighted argument in the signature box
   stopVisible: boolean;
   highlighted: string[];   // token classes used in the input line (syntax highlighting)
 }

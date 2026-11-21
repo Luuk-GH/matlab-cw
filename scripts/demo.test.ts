@@ -75,6 +75,13 @@ export async function run(): Promise<void> {
     await sleep(2500);
     await shot(4, 'help-tooltip');
 
+    // 6 (taken before 5, which runs a script). Signature help like the editor's parameter hints
+    await cw.test({ kind: 'key', key: 'Escape' }); await cw.test({ kind: 'key', key: 'Escape' }); await cw.test({ kind: 'key', key: 'Escape' });
+    await cw.test({ kind: 'type', text: 'plot(' });
+    await waitFor(async () => /plot\(/.test(((await cw.test({ kind: 'snapshot' })) as { signature: string }).signature), 10000);
+    await shot(6, 'signature-help');
+    await cw.test({ kind: 'key', key: 'Escape' }); await cw.test({ kind: 'key', key: 'Escape' }); await cw.test({ kind: 'key', key: 'Escape' });
+
     // 5. input() prompt in the input line
     await cw.test({ kind: 'key', key: 'Escape' }); await cw.test({ kind: 'key', key: 'Escape' });
     await typeLine(`run('ask_input.m')`);
