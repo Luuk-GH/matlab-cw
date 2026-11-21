@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const suites = {
-  unit: ['commandQueue', 'parsing', 'sharedSession', 'connectorProxy'],
+  unit: ['commandQueue', 'parsing', 'sections', 'foreignInput', 'sharedSession', 'connectorProxy'],
   fake: ['session', 'attach'],
 };
 const which = process.argv[2];

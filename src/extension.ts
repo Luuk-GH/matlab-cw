@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CommandWindowProvider, registerCommandWindow } from './commandWindow/provider';
+import { runFile, runSection, runSelection } from './runInCommandWindow';
 import { ReportedError, SessionManager } from './session';
 
 let session: SessionManager | undefined;
@@ -23,6 +24,9 @@ export function activate(context: vscode.ExtensionContext): CommandWindowApi {
   reg('matlabCommandWindow.connect', () => s.connect(true));
   reg('matlabCommandWindow.disconnect', () => s.disconnect());
   reg('matlabCommandWindow.interrupt', () => s.interrupt());
+  reg('matlabCommandWindow.runFile', () => runFile(s));
+  reg('matlabCommandWindow.runSection', () => runSection(s));
+  reg('matlabCommandWindow.runSelection', () => runSelection(s));
   reg('matlabCommandWindow.copyShareCommand', async () => {
     await vscode.env.clipboard.writeText('shareMATLABSession()');
     void vscode.window.showInformationMessage('Copied shareMATLABSession() — paste it in the MATLAB terminal of the MATLAB extension.');

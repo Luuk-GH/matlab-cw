@@ -8,8 +8,8 @@ debugger and the Workspace browser of the official extension, and with AI agents
 > **Not affiliated with or endorsed by MathWorks.** MATLAB is a registered trademark of The MathWorks, Inc.
 > This extension needs the official MATLAB extension (`MathWorks.language-matlab`) and a licensed MATLAB.
 
-> **Status: preview, untested with real MATLAB.** Everything was built and tested against a fake MATLAB; see
-> `TESTING-WITH-MATLAB.md` for what has to be checked with a real installation.
+> **Status: preview.** The connection and engine protocol are verified on MATLAB R2026b (the spike passes); the
+> Command Window itself has not yet been tried with real MATLAB. See `TESTING-WITH-MATLAB.md`.
 
 ## What it does
 
@@ -25,9 +25,13 @@ The *MATLAB CW* tab in the bottom panel:
   ask MATLAB when it is idle.
 - **Stop** button (or Ctrl+C in the input line) while code runs; Enter queues the next command.
 - **Never hangs:** `input()` switches the input line to answering, `pause` waits for Enter, `keyboard`/breakpoints
-  give a `K>>` prompt.
+  give a `K>>` prompt. An `input()` or `pause` from a command started elsewhere (the MATLAB terminal) is left to
+  that window, because MATLAB sends a command's output only to the window that started it.
+- **Run from the editor into the Command Window:** in a `.m` file **F5** runs the file, **Ctrl+Enter** the current
+  `%%` section, **Shift+Enter** the selection (also in the editor's Run menu and context menu). The editor keeps the
+  focus. Turn off `matlabCommandWindow.runInCommandWindow` to give these keys back to the MATLAB extension.
 
-Everything else (Run File/Section, debugger, Workspace, tests, linting, AI agents) stays with MathWorks' tools.
+Everything else (debugger, Workspace, tests, linting, AI agents) stays with MathWorks' tools.
 
 ## Setup
 
@@ -69,11 +73,13 @@ quits MATLAB. Nothing is added to your MATLAB path. Details: `RESEARCH.md`.
 | *MATLAB Command Window: Show* | Open the panel and connect. |
 | *… Connect to Shared MATLAB* / *… Disconnect* | Also in the panel's title bar. Disconnect leaves MATLAB running. |
 | *… Interrupt* | Stop the running code (also the Stop button). |
+| *… Run File / Run Section / Run Selection in Command Window* | F5 / Ctrl+Enter / Shift+Enter in a `.m` file. |
 | *… Copy shareMATLABSession() Command* | For pasting into the MATLAB terminal. |
 
 | Setting | Default | |
 |---|---|---|
 | `matlabCommandWindow.autoConnect` | `true` | Connect when the panel is shown; reconnect when `shareMATLABSession()` runs again. |
+| `matlabCommandWindow.runInCommandWindow` | `true` | F5, Ctrl+Enter and Shift+Enter in `.m` files run in the Command Window instead of the MATLAB extension's terminal. |
 | `matlabCommandWindow.languageServerPath` | (the official extension's) | Language server to use (`…/server/out/index.js`). |
 
 ## Troubleshooting
@@ -94,6 +100,8 @@ npm run test:unit          # pure logic, session file, connector relay
 npm run test:fake          # session core + backend against the fake language server and fake connector
 npm run test:integration   # end to end in a separate VS Code instance, against the fakes
 npm run test:vsix          # the same, from the packaged .vsix in a fresh profile
+npm run test:real          # the integration tests against the real MATLAB shared with shareMATLABSession()
+npm run demo:screenshots   # screenshots of the Command Window on the real MATLAB -> docs/screenshots/
 npm run spike:build        # rebuild spike/matlab-spike.js (see spike/README.md)
 ```
 

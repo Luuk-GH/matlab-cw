@@ -77,6 +77,9 @@ export class SessionManager implements vscode.Disposable {
 
   registerCommandWindow(w: CommandWindowReveal): void { this.webview = w; }
 
+  /** Show the Command Window without connecting (preserveFocus: keep the focus where it is, e.g. in the editor). */
+  reveal(preserveFocus: boolean): void { this.webview?.reveal(preserveFocus); }
+
   private forViews(fn: (v: ConsoleView) => void): void {
     for (const v of this.views) {
       try { fn(v); } catch (e) { this.log.warn(`Command Window view: ${(e as Error).message}`); }
@@ -152,7 +155,15 @@ export class SessionManager implements vscode.Disposable {
 
   /** The file that defines `name` (which()), for links. Only when idle. */
   async whichFile(name: string): Promise<string | undefined> {
-    const w = await this.queryText('which', [name], true, 2000);
+    // A click on a link: MATLAB may be busy for a moment (shared MATLAB: other clients such as the MATLAB extension
+    // also run code after an error, [verified, R2026b]). Wait up to 3 s for it to be idle; background queries are
+    // refused while busy.
+    for (let i = 0; i < 30 && this.state === 'busy'; i++) { await new Promise(r => setTimeout(r, 100)); }
+    let w = await this.queryText('which', [name], true, 2000);
+    for (let i = 0; i < 10 && w === undefined && this.state !== 'exited'; i++) {
+      await new Promise(r => setTimeout(r, 300));
+      w = await this.queryText('which', [name], true, 2000);
+    }
     const f = w?.trim().replace(/^built-in \((.*)\)$/, '$1');
     return f && /\.(m|mlx)$/i.test(f) && fs.existsSync(f) ? f : undefined;
   }
@@ -226,7 +237,14 @@ export class SessionManager implements vscode.Disposable {
       (err as ReportedError).reported = true;
       throw err;
     }
-    const backend = new LsBackend({ serverPath: server.path, attach: shared, env: testEnv(), startTimeoutMs: CONNECT_TIMEOUT_MS });
+    // MCW_TRACE=1: log the engine messages (prompt states, evals, input) to the output channel, for diagnosing.
+    const trace = process.env.MCW_TRACE === '1'
+      ? (dir: '->' | '<-', m: unknown) => {
+        const method = (m as { method?: string })?.method ?? '';
+        if (/^(mvm|eval|feval|text|interrupt|unpause|clc|DebugAdaptor)/i.test(method)) { this.log.info(`${dir} ${JSON.stringify(m).slice(0, 300)}`); }
+      }
+      : undefined;
+    const backend = new LsBackend({ serverPath: server.path, attach: shared, env: testEnv(), startTimeoutMs: CONNECT_TIMEOUT_MS, trace });
     const s = new MatlabSession(backend, m => this.log.info(m));
     this.session = s;
     this.lastSeenMtime = shared.mtimeMs;
@@ -241,6 +259,11 @@ export class SessionManager implements vscode.Disposable {
       this.inputPrompt = prompt;
       this.forViews(v => v.requestInput(source, prompt));
       this.webview?.reveal(true);
+    });
+    s.on('foreignInput', (source: InputSource, prompt: string) => {
+      if (this.session !== s) { return; }
+      const what = source === 'input' ? `input()${prompt.trim() ? ` ("${prompt.trim()}")` : ''}` : 'pause (press Enter)';
+      this.forViews(v => v.info(`MATLAB is waiting for ${what} from a command started outside this window, e.g. in the MATLAB terminal. Answer it there: its output goes to that window.`));
     });
     s.on('state', st => this.onState(s, st));
     s.on('prompt', (kind, hidden) => {
@@ -308,6 +331,11 @@ export class SessionManager implements vscode.Disposable {
     this.stateEmitter.fire(st);
     void vscode.commands.executeCommand('setContext', 'matlabCommandWindow.busy', st === 'busy' || st === 'input' || st === 'pause');
     if (st === 'busy') { this.forViews(v => v.setBusy()); }
+    // [verified, R2026b] A command started elsewhere (the MATLAB terminal) ends with no 'prompt' event of ours:
+    // show the prompt again when MATLAB is back at >> / K>> and nothing of ours is running or queued.
+    if ((st === 'idle' || st === 'debug') && s.queuedCount === 0) {
+      this.forViews(v => v.showPrompt(st === 'debug' ? 'debug' : 'ready'));
+    }
   }
 
   private stopSession(): void {
@@ -350,7 +378,7 @@ function testEnv(): Record<string, string> {
   return env;
 }
 
-const CONNECT_TIMEOUT_MS = 60000;
+const CONNECT_TIMEOUT_MS = 20000;
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
   return Promise.race([p, new Promise<undefined>(r => setTimeout(() => r(undefined), ms))]);

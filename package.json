@@ -64,6 +64,22 @@
         "command": "matlabCommandWindow.copyShareCommand",
         "title": "Copy shareMATLABSession() Command",
         "category": "MATLAB Command Window"
+      },
+      {
+        "command": "matlabCommandWindow.runFile",
+        "title": "Run File in Command Window",
+        "category": "MATLAB Command Window",
+        "icon": "$(play)"
+      },
+      {
+        "command": "matlabCommandWindow.runSection",
+        "title": "Run Section in Command Window",
+        "category": "MATLAB Command Window"
+      },
+      {
+        "command": "matlabCommandWindow.runSelection",
+        "title": "Run Selection in Command Window",
+        "category": "MATLAB Command Window"
       }
     ],
     "menus": {
@@ -88,6 +104,25 @@
           "when": "view == matlabCommandWindow.commandWindow",
           "group": "navigation@4"
         }
+      ],
+      "editor/title/run": [
+        {
+          "command": "matlabCommandWindow.runFile",
+          "when": "editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow",
+          "group": "navigation@0"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "matlabCommandWindow.runSelection",
+          "when": "editorLangId == matlab && editorHasSelection",
+          "group": "matlabCommandWindow@1"
+        },
+        {
+          "command": "matlabCommandWindow.runSection",
+          "when": "editorLangId == matlab",
+          "group": "matlabCommandWindow@2"
+        }
       ]
     },
     "configuration": {
@@ -103,6 +138,11 @@
           "default": "",
           "scope": "machine-overridable",
           "markdownDescription": "The MATLAB language server used to connect (`.../server/out/index.js`). Leave empty to use the one inside the installed official MATLAB extension (`MathWorks.language-matlab`)."
+        },
+        "matlabCommandWindow.runInCommandWindow": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Run MATLAB files in this Command Window: **F5** runs the file, **Ctrl+Enter** the current `%%` section, **Shift+Enter** the selection, instead of the MATLAB extension's terminal. The editor keeps the focus. Turn off to give these keys back to the MATLAB extension."
         }
       }
     },
@@ -125,7 +165,25 @@
           "contextualTitle": "MATLAB"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "key": "f5",
+        "command": "matlabCommandWindow.runFile",
+        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed && !matlab.isDebugging"
+      },
+      {
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "command": "matlabCommandWindow.runSection",
+        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed && !matlab.isDebugging"
+      },
+      {
+        "key": "shift+enter",
+        "command": "matlabCommandWindow.runSelection",
+        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed && !matlab.isDebugging && editorHasSelection && !editorHasMultipleSelections"
+      }
+    ]
   },
   "scripts": {
     "compile": "npm run typecheck && node esbuild.mjs",
@@ -138,7 +196,9 @@
     "test:fake": "node scripts/run-tests.mjs fake",
     "test:integration": "node esbuild.mjs && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-integration.mjs",
     "spike:build": "esbuild spike/spike.ts --bundle --platform=node --target=node18 --outfile=spike/matlab-spike.js --log-level=warning",
-    "test:vsix": "npm run package && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-vsix-test.mjs"
+    "test:vsix": "npm run package && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-vsix-test.mjs",
+    "test:real": "node esbuild.mjs && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-integration.mjs --real",
+    "demo:screenshots": "node esbuild.mjs && esbuild scripts/demo.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/demo.test.js --log-level=warning && node scripts/run-demo.mjs"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "^6.20.4",

@@ -1,7 +1,12 @@
 // Unit checks for the pure MATLAB text helpers: input-line syntax, MATLAB hyperlinks, help text, feval results,
 // completion items and the Workspace JSON. No VS Code, no MATLAB. Run: npm run test:unit
 import * as assert from 'assert';
-import { completionItems, fevalOutputs } from '../src/backend/lsBackend';
+import { completionItems, fevalOutputs, inputPromptText } from '../src/backend/lsBackend';
+
+assert.strictEqual(inputPromptText(['Enter a number: ']), 'Enter a number: ');
+assert.strictEqual(inputPromptText('Name: '), 'Name: ');
+assert.strictEqual(inputPromptText({ promptString: 'x? ' }), 'x? ');
+assert.strictEqual(inputPromptText(undefined), '');
 import { linkTarget, parseAnchors } from '../src/commandWindow/webview/anchors';
 import { fileFromWhich, functionDeclaration, parseHelp } from '../src/language/helpText';
 import { callContext, completionPrefix } from '../src/language/matlabSyntax';

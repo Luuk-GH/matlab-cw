@@ -63,3 +63,29 @@ export function readSharedSession(file = sessionFilePath(), alive: (pid: number)
 export function processAlive(pid: number): boolean {
   try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; }
 }
+
+/** "R2026b" from a MATLAB executable path such as C:\Program Files\MATLAB\R2026b\bin\win64\MATLAB.exe. */
+export function releaseFromPath(p: string | undefined | null): string | null {
+  const m = /(?:^|[\\/_])(R20\d\d[ab])(?=[\\/.]|$)/i.exec(p ?? '');
+  return m ? `R${m[1].slice(1, 5)}${m[1].slice(5).toLowerCase()}` : null;
+}
+
+/**
+ * The release of a running MATLAB, read from its executable path (the session file does not contain it). Null when
+ * it cannot be told, e.g. for an installation folder without the release in its name.
+ */
+export async function matlabReleaseOfProcess(pid: number): Promise<string | null> {
+  if (!pid) { return null; }
+  try {
+    if (process.platform === 'linux') { return releaseFromPath(fs.readlinkSync(`/proc/${pid}/exe`)); }
+    const { execFile } = await import('child_process');
+    const run = (cmd: string, args: string[]) => new Promise<string>(resolve =>
+      execFile(cmd, args, { timeout: 5000, windowsHide: true }, (_e, out) => resolve(String(out ?? ''))));
+    if (process.platform === 'win32') {
+      return releaseFromPath(await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-Process -Id ${pid}).Path`]));
+    }
+    return releaseFromPath(await run('ps', ['-o', 'comm=', '-p', String(pid)]));
+  } catch {
+    return null;
+  }
+}

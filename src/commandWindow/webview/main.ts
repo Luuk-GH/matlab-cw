@@ -27,7 +27,8 @@ const COLLAPSE_LINES = 40;
 /** Oldest blocks are dropped beyond this many. */
 const MAX_BLOCKS = 1000;
 /** Stack frames of run() (Run File) and of the extension's own helpers: noise for the user. */
-const HELPER_FRAME = /^(?:Error in|\s*> In) (?:run|mcw\.\w+) \(line \d+\)\r?\n?/gm;
+// [verified, R2026b] a frame is followed by its code line and a ^^^ line: hide those too (but never a next frame).
+const HELPER_FRAME = /^(?:Error in|\s*> In) (?:run|mcw\.\w+) \(line \d+\)(?:\r?\n|$)(?:(?!Error in |Error using |\s*> In )[^\n]*\n(?:[ \t]*\^+[ \t]*(?:\n|$))?)?/gm;
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 const CLEAR_SCREEN = /\x1b\[2J|\x1bc|\f/;
 

@@ -1,6 +1,8 @@
 # Testing with real MATLAB
 
-**Nothing in this extension has run against real MATLAB yet.** All automated tests use a fake MATLAB
+**Status (2026-11-20):** the spike passes on MATLAB R2026b with MATLAB extension 1.3.16 (attach, commands, output,
+errors, input(), pause, K>>, interrupt, completion, help, figures, the session core end to end). **The Command Window
+itself (the .vsix in VS Code) has not been tried with real MATLAB yet**: that is what sections 1–6 are for. All automated tests use a fake MATLAB
 (`test/fake/fakeLanguageServer.js`) and a fake web connector (`test/fake/fakeConnector.js`). This checklist is for the
 first person with MATLAB. Work top to bottom. For every failure, note the step number, what you saw, and copy the
 **MATLAB Command Window** output (View → Output → *MATLAB Command Window*).
@@ -79,6 +81,17 @@ If S1 (attach) fails, stop here and send the files: the attach route itself need
 - [ ] **5.8** Queue: `pause(3)`, then `disp(1)` and `disp(2)` while busy → after 3 s, `1` then `2`.
 - [ ] **5.9** A long command started in the **official** terminal → our window shows busy and its Stop button interrupts it.
 
+## 5b. Run from the editor
+
+- [ ] **5b.1** In `error_demo.m` press **F5** → `>> run('…error_demo.m')` and the error appear in *MATLAB CW*; the
+  official MATLAB terminal does **not** come to the front; the cursor stays in the editor. *If the terminal still
+  runs it:* the MATLAB extension's own F5 binding won — check *Preferences: Open Keyboard Shortcuts*, search `f5`.
+- [ ] **5b.2** Put the cursor in a `%%` section, **Ctrl+Enter** → `>> % file.m: section "…"` and only that section runs.
+- [ ] **5b.3** Select a line, **Shift+Enter** → it runs in *MATLAB CW*.
+- [ ] **5b.4** Turn off `matlabCommandWindow.runInCommandWindow` → F5 goes to the MATLAB terminal again.
+- [ ] **5b.5** Type `run('ask_input.m')` in the **MATLAB terminal** → our window shows "MATLAB is waiting for input()…
+  Answer it there", its input line does not switch to answering. Answer in the terminal; the output appears there.
+
 ## 6. Robustness
 
 - [ ] **6.1** Close VS Code while connected → MATLAB of the official extension is unaffected until it closes itself; no leftover `node`/language-server processes after ~10 s.
@@ -87,15 +100,36 @@ If S1 (attach) fails, stop here and send the files: the attach route itself need
 - [ ] **6.4** Folder with spaces and non-ASCII characters → links still open.
 - [ ] **6.5** `figure; plot(1:10)` from our window → figure appears; prompt returns.
 
-## Still unverified (as of 0.1.0)
+## Verified with the spike (R2026b, extension 1.3.16, 2026-11-20)
 
-1. That the language server's `--matlabUrl` mode works against MATLAB's connector through our relay (S1), including the WebSocket transport.
-2. That a second engine client can attach next to the official extension's, without disturbing it (A1, A2, 1.5, 1.10), including the `matlabls/connection/startup` message our instance sends.
-3. Whether output of the official terminal's commands reaches our window (A1).
-4. `shareMATLABSession()` reusing the existing connector key (so the official extension's connection keeps working).
-5. The internal notification protocol (`RESEARCH.md` §2) and event order (S2–S4); feval shapes (S5).
-6. K>> behaviour and fevals at K>> (S6, S13); `input()` prompt echo (S7, S8).
-7. Error text, hyperlinks, warning markers (S9, S11, S22); the `run` frame filter.
-8. Help text format and completion results in remote mode (S10, S14).
-9. Interrupt latency (S12); multi-line eval (S17); figures (S21).
-10. Behaviour after MATLAB restarts, VS Code closes, or several MATLABs are shared (1.9, 6.1, 6.2).
+- Attaching works with the loader's fix (`src/backend/lsLoader.ts`, RESEARCH.md §8, 3a): connected in ≈ 1.3 s.
+- Prompt states and event order (S2–S4), feval result and error shapes (S5), K>> and fevals at K>> (S6, S13),
+  `input()` (S7; its prompt is not printed as output, S8), help/which text (S10), interrupt within ≈ 0.4 s (S12),
+  completion (S14), streaming (S15), `pause` (S16), multi-line code (S17), `clc` (S18), figures (S21), the session
+  core end to end (S24); MATLAB keeps running after we disconnect (A2).
+- Errors arrive as plain text without hyperlinks, `feature('hotlinks')` is false in this session (S9, S22): links come
+  from our own parsing of `Error in … (line N)`.
+- Once, an interrupt was ignored (after a figure and a K>> round); a second one stopped MATLAB at once. The session now
+  re-sends the interrupt after 2 s and 5 s while the same command still runs. Not reproducible in isolation.
+
+## Verified with the integration tests on real MATLAB (`npm run test:real`, 41 checks, 2026-11-20)
+
+Connecting, output, red errors without markers, yellow warnings, error links (clicking opens the file at the line),
+the hidden `run()` frame, long output collapsing, history, completion (variables, struct fields), help tooltip, usage
+hint, highlighting, `input()` answering, `keyboard`/`dbcont`, Stop, `clc`, Run File / Run Selection / Run Section
+from the editor (the editor keeps the focus), an `input()` from another client left to that client (5b.5),
+disconnect/reconnect. Passed 4 runs in a row with the official MATLAB extension attached to the same MATLAB.
+Screenshots: `docs/screenshots/` (`npm run demo:screenshots`).
+
+## Still unverified
+
+1. The Command Window UI with real MATLAB: everything in sections 1–6.
+2. That the official MATLAB terminal keeps working normally while we are attached (1.5). Seen by the user: output of
+   the terminal's commands goes only to the terminal, but `input()` prompts reach every window, and an answer typed in
+   either window is accepted (now handled: 5b.5).
+3. Which F5/Ctrl+Enter/Shift+Enter binding wins against the MATLAB extension's own (5b.1); VS Code does not document
+   the order between two extensions' bindings for the same key.
+4. That the official extension's own features are undisturbed while we are attached (1.10).
+5. Warning markers (S11 events recorded, not yet checked in the UI: 2.3).
+6. Behaviour after MATLAB restarts, VS Code closes, or several MATLABs are shared (1.9, 6.1, 6.2).
+7. Releases other than R2026b (the release decides the protocol version, see RESEARCH.md §8, 3a).

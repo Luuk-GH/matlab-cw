@@ -50,18 +50,28 @@ export interface MatlabSessionEvents {
   prompt: (kind: 'ready' | 'debug', hidden: boolean) => void;
   /** A running command waits for a line: input() (with its prompt text) or pause. Answer with sendInput. */
   input: (source: InputSource, prompt: string) => void;
+  /**
+   * MATLAB waits for input() or pause from a command started elsewhere (the MATLAB terminal, an agent). [verified,
+   * R2026b] Every client gets the input/prompt events, but output goes only to the client that started the command,
+   * so answering here would split the conversation over two windows. Emitted once per wait.
+   */
+  foreignInput: (source: InputSource, prompt: string) => void;
   clear: () => void;
   exit: (reason: string) => void;
 }
 
 /** After an eval response, how long to wait for the prompt event that tells READY from DEBUG. */
 const PROMPT_SETTLE_MS = 60;
+/** Prompt states in which MATLAB is running something. */
+const BUSY_STATES = new Set<PromptState>(['BUSY', 'MORE', 'COMPLETING_BLOCK']);
 
 export class MatlabSession extends EventEmitter {
   private _state: SessionState = 'starting';
   private readonly queue = new CommandQueue<Pending>(p => this.send(p));
   private lastPrompt: PromptState = 'INITIALIZING';
   private inputPrompt = '';
+  /** True while MATLAB waits for input()/pause for a command that is not ours (reported once). */
+  private foreignWait = false;
   private _release: string | null = null;
   readonly ready: Promise<void>;
   private readyResolve!: () => void;
@@ -156,6 +166,18 @@ export class MatlabSession extends EventEmitter {
     if (this._state === 'exited') { return; }
     for (const p of this.queue.cancelWaiting()) { this.finish(p, 'cancelled'); }
     this.backend.interrupt();
+    // [verified once, R2026b] An interrupt can be ignored (seen after a figure and a K>> round in the spike); a second
+    // one then stops MATLAB at once. Re-send while the same command is still running, but never to a later one.
+    const job = this.queue.current;
+    if (!job || this._state !== 'busy') { return; }
+    for (const ms of [2000, 5000]) {
+      setTimeout(() => {
+        if (this.queue.current === job && this._state === 'busy') {
+          this.log(`still busy ${ms / 1000} s after interrupt: sending it again`);
+          this.backend.interrupt();
+        }
+      }, ms).unref?.();
+    }
   }
 
   dispose(): void {
@@ -170,7 +192,10 @@ export class MatlabSession extends EventEmitter {
     if (p.kind === 'command') {
       try { p.onSend?.(); } catch (e) { this.log(`onSend failed: ${(e as Error).message}`); }
       this.setState('busy');
-      p.sawBusy = false;
+      // [verified, R2026b] MATLAB does not always send READY after a command (e.g. after an input() answer it can stay
+      // "BUSY" until the next prompt), and then the next command goes straight to READY/DEBUG without a new BUSY.
+      // When the last state MATLAB reported is already busy, count that as this command's BUSY.
+      p.sawBusy = BUSY_STATES.has(this.lastPrompt);
       this.backend.eval(p.line).then(() => this.onEvalResponse(p), () => this.finish(p, 'cancelled'));
       return;
     }
@@ -185,6 +210,17 @@ export class MatlabSession extends EventEmitter {
     const cur = this.queue.current;
     const command = cur?.kind === 'command' ? cur : undefined;
     if (cur && !command) { return; }   // a hidden query: never changes the visible state
+    if ((state === 'INPUT' || state === 'PAUSE') && !command) {
+      // Not ours: show MATLAB as busy, do not turn our input line into an answer line.
+      if (!this.foreignWait) {
+        this.foreignWait = true;
+        this.emit('foreignInput', state === 'INPUT' ? 'input' : 'pause', this.inputPrompt);
+      }
+      this.inputPrompt = '';
+      this.setState('busy');
+      return;
+    }
+    if (state !== 'INPUT' && state !== 'PAUSE') { this.foreignWait = false; }
     if (state === 'INPUT') {
       this.setState('input');
       this.emit('input', 'input', this.inputPrompt);

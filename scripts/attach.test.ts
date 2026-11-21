@@ -1,6 +1,8 @@
 // The whole attach chain without VS Code: session core -> LsBackend (attach) -> relay -> fake language server
 // (--matlabUrl) -> fake connector. Run: npm run test:fake
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { LsBackend } from '../src/backend/lsBackend';
 import { MatlabSession } from '../src/matlabSession';
@@ -20,6 +22,7 @@ async function main(): Promise<void> {
   let out = '';
   s.on('output', t => { out += t; });
   await s.start();
+  assert.strictEqual(s.release, 'R2099z', 'real release read from version(), not the loader placeholder');
   assert.strictEqual(s.state, 'idle');
   assert.ok(conn.requests.some((r: any) => r.method === 'POST' && r.apikey === 'k1'), 'handshake reached the connector');
   assert.ok(conn.requests.some((r: any) => r.method === 'UPGRADE' && r.apikey === 'k1'), 'websocket reached the connector');
@@ -40,6 +43,22 @@ async function main(): Promise<void> {
   assert.notStrictEqual(reason, 'timeout', 'session ends when MATLAB disappears');
   assert.strictEqual(s2.state, 'exited');
 
+  // An ignored interrupt (seen once on R2026b) is sent again while the same command still runs.
+  const conn3 = await fakeConnector.start({ apiKey: 'k3' });
+  const stubborn = new MatlabSession(new LsBackend({ serverPath: fake, execPath: process.execPath,
+    attach: { ...target, port: conn3.port, apiKey: 'k3' }, startTimeoutMs: 10000,
+    env: { MCW_FAKE_IGNORE_FIRST_INTERRUPT: '1' } }));
+  await stubborn.start();
+  const longRun = stubborn.sendLine('pause(20)');
+  await sleep(300);
+  const tStop = Date.now();
+  stubborn.interrupt();
+  assert.strictEqual(await longRun, 'ready');
+  assert.ok(Date.now() - tStop < 4000, `stopped by the re-sent interrupt (${Date.now() - tStop} ms)`);
+  stubborn.dispose();
+  await sleep(500);
+  await conn3.close();
+
   // Wrong API key / nothing listening: a clear failure, not a hang.
   const conn2 = await fakeConnector.start({ apiKey: 'right' });
   const bad = new MatlabSession(new LsBackend({ serverPath: fake, execPath: process.execPath, attach: { ...target, port: conn2.port, apiKey: 'wrong' }, startTimeoutMs: 10000 }));
@@ -47,6 +66,17 @@ async function main(): Promise<void> {
   await conn2.close();
   const none = new MatlabSession(new LsBackend({ serverPath: fake, execPath: process.execPath, attach: { ...target, port: conn2.port }, startTimeoutMs: 10000 }));
   await assert.rejects(none.start(), /Could not connect to the shared MATLAB/);
+
+  // A language server whose code the loader cannot patch (another extension version): fail fast, clearly.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mcw-unpatchable-'));
+  const unpatchable = path.join(tmp, 'index.js');
+  fs.writeFileSync(unpatchable, fs.readFileSync(fake, 'utf8').replace(/class RemoteMatlabSession extends/, 'class RemoteSession extends')
+    .replace('new RemoteMatlabSession()', 'new RemoteSession()'));
+  const t0 = Date.now();
+  const old = new MatlabSession(new LsBackend({ serverPath: unpatchable, execPath: process.execPath, attach: target, startTimeoutMs: 10000 }));
+  await assert.rejects(old.start(), /version of the MATLAB extension is not supported/);
+  assert.ok(Date.now() - t0 < 5000, 'unsupported server detected quickly');
+  fs.rmSync(tmp, { recursive: true, force: true });
 
   console.log('attach (fake connector): all assertions passed');
 }

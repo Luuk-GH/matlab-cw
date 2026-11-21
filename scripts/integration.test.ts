@@ -7,6 +7,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { Snapshot } from '../src/commandWindow/protocol';
 import type { CommandWindowApi } from '../src/extension';
+import { LsBackend } from '../src/backend/lsBackend';
+import { readSharedSession } from '../src/backend/sharedSession';
+
+/** MCW_IT_REAL=1 (npm run test:real): against the real shared MATLAB instead of the fakes. */
+const real = process.env.MCW_IT_REAL === '1';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 const results: string[] = [];
@@ -27,7 +32,13 @@ async function waitFor<T>(fn: () => Promise<T | undefined | false> | T | undefin
   }
 }
 
+/** Resolves with the promise's value, or undefined after `ms` (a stuck step must not hang the cleanup). */
+function withLimit<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+  return Promise.race([p, sleep(ms).then(() => undefined)]);
+}
+
 export async function run(): Promise<void> {
+  let cleanup: (() => Promise<void>) | undefined;
   const resultFile = process.env.MCW_IT_RESULT ?? path.join(os.tmpdir(), 'mcw-it-result.txt');
   try {
     const ext = vscode.extensions.all.find(e => e.packageJSON?.name === 'matlab-command-window-community')!;
@@ -47,8 +58,19 @@ export async function run(): Promise<void> {
     await vscode.commands.executeCommand('matlabCommandWindow.show');
     check('Command Window webview loads', !!(await waitFor(() => cw.isReady, 15000)));
     check('connects to the shared MATLAB automatically', !!(await waitFor(() => api.session.state === 'idle', 20000)), api.session.state);
-    let s = await untilText(/Connected to MATLAB R2099z/);
+    let s = await untilText(real ? /Connected to MATLAB R20\d\d[ab]/ : /Connected to MATLAB R2099z/);
     check('says it is connected (and to which MATLAB)', !!s, (await snap()).text.slice(-300));
+    // Real MATLAB: remember its current folder, to put it back at the end.
+    const startFolder = real ? await waitFor(() => api.session.queryText('pwd'), 20000) : undefined;
+    if (real) {
+      // Whatever happens below, never leave the user's MATLAB at K>> or in our test folder.
+      cleanup = async () => {
+        api.session.interrupt();
+        await sleep(500);
+        await withLimit(api.session.execute("if ~isempty(dbstack) || feature('IsDebugMode'), dbquit('all'); end"), 10000);
+        await withLimit(api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s`), 10000);
+      };
+    }
     s = await untilMode('ready');
     check('prompt is >> when idle', s?.prompt === '>>', s?.prompt);
     check('attached through the session file, not a new MATLAB', !!api.session.sharedSession?.port);
@@ -68,12 +90,19 @@ export async function run(): Promise<void> {
     s = await untilText(/Error in error_demo \(line 3\)/);
     check('script error shown with its stack', !!s, (await snap()).text.slice(-400));
     check('run() frame hidden', !/Error in run \(line/.test(s?.text ?? ''));
+    check("run() frame's code line hidden too", !/evalin\('caller'/.test(s?.text ?? ''), s?.text.slice(-300));
+    check('no {\\b }\\b error markers shown', !/[\x08]|^\{|^\}/m.test(s?.text ?? ''), JSON.stringify(s?.text.slice(-300)));
     const linkIdx = s?.links.findIndex(l => l.func === 'error_demo' && l.line === 3) ?? -1;
     check('"Error in error_demo (line 3)" is a link', linkIdx >= 0, JSON.stringify(s?.links));
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
     if (linkIdx >= 0) {
       await cw.test({ kind: 'clickLink', index: linkIdx });
-      const ed = await waitFor(() => vscode.window.activeTextEditor?.document.fileName.endsWith('error_demo.m') ? vscode.window.activeTextEditor : undefined, 5000);
+      // The editor opens first and moves to the line just after: wait for both.
+      const atLine = () => {
+        const e = vscode.window.activeTextEditor;
+        return e?.document.fileName.endsWith('error_demo.m') && e.selection.active.line === 2 ? e : undefined;
+      };
+      const ed = (await waitFor(atLine, 5000)) ?? vscode.window.activeTextEditor;
       check('clicking the link opens the file at the error line', ed?.selection.active.line === 2, String(ed?.selection.active.line));
     }
 
@@ -121,7 +150,8 @@ export async function run(): Promise<void> {
     await untilMode('ready');
 
     await typeLine("kb = 1; keyboard; disp('after keyboard')");
-    s = await untilMode('debug');
+    // Real MATLAB: K>> can take seconds (the MATLAB extension's debugger reacts to the stop first).
+    s = await untilMode('debug', real ? 20000 : 10000);
     check('keyboard shows the K>> prompt', s?.prompt === 'K>>', s?.prompt);
     await typeLine('dbcont');
     await untilText(/after keyboard/);
@@ -136,14 +166,53 @@ export async function run(): Promise<void> {
     s = await untilMode('ready', 5000);
     check('Stop interrupts the run', !!s && s.stopVisible === false, (await snap()).mode);
 
+    // ---- Run File / Section / Selection from the editor go to the Command Window, the editor keeps focus ----
+    const demo = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(path.join(dir, 'error_demo.m')));
+    await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runFile')), 15000);
+    s = await untilText(/>> run\('.*error_demo\.m'\)[\s\S]*Error in error_demo \(line 3\)/);
+    check('Run File runs the file in the Command Window', !!s, (await snap()).text.slice(-300));
+    check('the editor keeps the focus after Run File', vscode.window.activeTextEditor?.document === demo.document);
+    demo.selection = new vscode.Selection(1, 0, 1, 6);   // "a = 1;"
+    await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSelection')), 15000);
+    check('Run Selection runs the selected code', !!(await untilText(/^>> a = 1;$/m)), JSON.stringify((await snap()).text.slice(-500)));
+    demo.selection = new vscode.Selection(0, 0, 0, 0);
+    await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSection')), 15000);
+    check('Run Section runs the section at the cursor', !!(await untilText(/>> % error_demo\.m: section lines 1–\d/)), JSON.stringify((await snap()).text.slice(-500)));
+    await untilMode('ready');
+
     await typeLine('clc');
     s = await waitFor(async () => { const x = await snap(); return !/x = 6\*7/.test(x.text) ? x : undefined; }, 5000);
     check('clc clears the Command Window', !!s);
+
+    // ---- input() from a command started elsewhere (real MATLAB only: the fakes do not share one interpreter) ----
+    if (real) {
+      // A second client plays the MATLAB terminal of the official extension.
+      const lookup = readSharedSession();
+      const other = lookup.ok ? new LsBackend({ serverPath: process.env.MCW_LANGUAGE_SERVER!, attach: lookup.session, startTimeoutMs: 20000 }) : undefined;
+      let otherOut = '';
+      other?.on('output', (t: string) => { otherOut += t; });
+      await other?.start();
+      const otherRun = other?.eval(`run('${mq(path.join(dir, 'ask_input.m'))}')`);
+      s = await untilText(/MATLAB is waiting for input\(\)[\s\S]*Answer it there/);
+      check('input() from another window is left to that window', !!s, (await snap()).text.slice(-300));
+      check('our input line does not switch to answering', (await snap()).mode !== 'input', (await snap()).mode);
+      await other?.eval('5');   // answered "in the terminal"
+      await otherRun;
+      check('the other window gets its output', /You typed 5/.test(otherOut), JSON.stringify(otherOut));
+      check('back to >> afterwards', !!(await untilMode('ready')), (await snap()).mode);
+      other?.dispose();
+      await sleep(1500);
+    }
 
     // ---- disconnect / reconnect; stale share ----
     await vscode.commands.executeCommand('matlabCommandWindow.disconnect');
     s = await untilMode('exited');
     check('Disconnect leaves the Command Window disconnected', !!s && /Disconnected\. MATLAB keeps running/.test(s.text), (await snap()).text.slice(-200));
+    if (real) {
+      // Do not touch the real session file: just connect again.
+      await Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.connect')).catch(() => undefined);
+      check('reconnects', !!(await waitFor(() => api.session.state === 'idle', 20000)), api.session.state);
+    } else {
     const sessionFile = process.env.MCW_SESSION_FILE!;
     const saved = fs.readFileSync(sessionFile, 'utf8');
     fs.writeFileSync(sessionFile, JSON.stringify({ ...JSON.parse(saved), pid: 999999 }));
@@ -152,11 +221,19 @@ export async function run(): Promise<void> {
     check('a stale share is explained (run shareMATLABSession())', !!s, (await snap()).text.slice(-300));
     fs.writeFileSync(sessionFile, saved);   // like running shareMATLABSession() again
     check('reconnects when MATLAB is shared again', !!(await waitFor(() => api.session.state === 'idle', 10000)), api.session.state);
+    }
     await typeLine('disp(123)');
     check('works after reconnecting', !!(await untilText(/\s123\n/)));
+    if (real) {
+      // Leave the user's MATLAB as we found it: folder back, our test variables gone.
+      await api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s`);
+      const now = await api.session.queryText('pwd');
+      check('MATLAB is back in its own folder', now === startFolder, `${now} vs ${startFolder}`);
+    }
   } catch (e) {
     check('no exception', false, (e as Error).stack ?? String(e));
   } finally {
+    await cleanup?.().catch(e => check('cleanup of the real MATLAB', false, String(e)));
     const summary = `${results.length - failures}/${results.length} checks passed`;
     fs.writeFileSync(resultFile, [...results, '', summary, ''].join('\n'));
     console.log(summary);

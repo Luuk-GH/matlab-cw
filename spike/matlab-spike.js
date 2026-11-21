@@ -246,6 +246,106 @@ var JsonRpcPeer = class {
   }
 };
 
+// src/backend/lsLoader.ts
+var PATCH_MISSING_MARKER = "MCW_LOADER_PATCH_MISSING";
+var FALLBACK_RELEASE = "R2024a";
+var LOADER_SOURCE = `
+const fs = require('fs'), path = require('path'), Module = require('module');
+const serverPath = path.resolve(process.argv[1]);
+process.argv = [process.argv[0], serverPath, ...process.argv.slice(2)];
+let src = fs.readFileSync(serverPath, 'utf8');
+const anchor = /(class RemoteMatlabSession extends AbstractMatlabSession\\s*\\{\\s*initialize\\s*\\(\\s*matlabConnection\\s*\\)\\s*\\{)/;
+if (anchor.test(src)) {
+  src = src.replace(anchor, '$1 this.matlabRelease = process.env.MCW_MATLAB_RELEASE || null;');
+} else {
+  process.stderr.write('${PATCH_MISSING_MARKER}\\n');
+}
+const m = new Module(serverPath, null);
+m.filename = serverPath;
+m.paths = Module._nodeModulePaths(path.dirname(serverPath));
+process.mainModule = m;
+require.main = m;
+m._compile(src, serverPath);
+`;
+
+// src/backend/sharedSession.ts
+var fs2 = __toESM(require("fs"));
+var os = __toESM(require("os"));
+var path = __toESM(require("path"));
+function sessionFilePath(env = process.env, platform = process.platform) {
+  if (env.MCW_SESSION_FILE) {
+    return env.MCW_SESSION_FILE;
+  }
+  let dir;
+  if (platform === "win32") {
+    dir = path.join(env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming"), "MathWorks", "MATLAB MCP Server");
+  } else if (platform === "darwin") {
+    dir = path.join(env.HOME ?? os.homedir(), "Library", "Application Support", "MathWorks", "MATLAB MCP Server");
+  } else {
+    dir = path.join(env.HOME ?? os.homedir(), ".MathWorks", "MATLABMCPServer");
+  }
+  return path.join(dir, "v1", "sessionDetails.json");
+}
+function readSharedSession(file = sessionFilePath(), alive = processAlive) {
+  let text;
+  let mtimeMs;
+  try {
+    text = fs2.readFileSync(file, "utf8");
+    mtimeMs = fs2.statSync(file).mtimeMs;
+  } catch {
+    return { ok: false, reason: "missing", file, message: "No shared MATLAB session found." };
+  }
+  let d;
+  try {
+    d = JSON.parse(text.replace(/^﻿/, ""));
+  } catch {
+    return { ok: false, reason: "invalid", file, message: `The shared-session file is not valid JSON: ${file}` };
+  }
+  const port = Number(d.port), pid = Number(d.pid);
+  const certificate = typeof d.certificate === "string" ? d.certificate : "";
+  const apiKey = typeof d.apiKey === "string" ? d.apiKey : "";
+  if (!port || !certificate || !apiKey) {
+    return { ok: false, reason: "invalid", file, message: `The shared-session file lacks port, certificate or apiKey: ${file}` };
+  }
+  if (pid && !alive(pid)) {
+    return { ok: false, reason: "stale", file, message: `The MATLAB that was shared (process ${pid}) is no longer running.` };
+  }
+  return {
+    ok: true,
+    session: { port, certificate, apiKey, pid, basePath: typeof d.basePath === "string" ? d.basePath : "", file, mtimeMs }
+  };
+}
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === "EPERM";
+  }
+}
+function releaseFromPath(p) {
+  const m = /(?:^|[\\/_])(R20\d\d[ab])(?=[\\/.]|$)/i.exec(p ?? "");
+  return m ? `R${m[1].slice(1, 5)}${m[1].slice(5).toLowerCase()}` : null;
+}
+async function matlabReleaseOfProcess(pid) {
+  if (!pid) {
+    return null;
+  }
+  try {
+    if (process.platform === "linux") {
+      return releaseFromPath(fs2.readlinkSync(`/proc/${pid}/exe`));
+    }
+    const { execFile } = await import("child_process");
+    const run = (cmd, args) => new Promise((resolve2) => execFile(cmd, args, { timeout: 5e3, windowsHide: true }, (_e, out) => resolve2(String(out ?? ""))));
+    if (process.platform === "win32") {
+      return releaseFromPath(await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", `(Get-Process -Id ${pid}).Path`]));
+    }
+    return releaseFromPath(await run("ps", ["-o", "comm=", "-p", String(pid)]));
+  } catch {
+    return null;
+  }
+}
+
 // src/backend/types.ts
 var MatlabError = class extends Error {
   constructor(identifier, message) {
@@ -273,7 +373,13 @@ var LsBackend = class extends import_events.EventEmitter {
   exited = false;
   /** Set while starting: a 'disconnected' status then means the connection failed. */
   onDisconnected;
+  /** Set while starting: the loader could not apply its fix (unsupported MATLAB extension version). */
+  onPatchMissing;
+  /** Set while starting: the connector connection is up; now the engine (MVM) must answer. */
+  onConnectorUp;
   release = null;
+  /** The shared MATLAB's release as read from its process, told to the language server (lsLoader.ts). */
+  releaseHint = null;
   proxy;
   on(event, listener) {
     return super.on(event, listener);
@@ -286,9 +392,18 @@ var LsBackend = class extends import_events.EventEmitter {
     if (this.opts.attach) {
       this.proxy = await startConnectorProxy(this.opts.attach, (m) => this.log(m));
       matlabUrl = this.proxy.url;
+      this.releaseHint = await matlabReleaseOfProcess(this.opts.attach.pid ?? 0);
+      this.log(`shared MATLAB release: ${this.releaseHint ?? `unknown (assuming ${FALLBACK_RELEASE} or newer)`}`);
     }
     try {
-      return await this.launch(matlabUrl);
+      const info = await this.launch(matlabUrl);
+      if (this.opts.attach) {
+        const v = await this.feval("version", 1, []).catch(() => void 0);
+        const m = /\((R\d{4}\w)\)/.exec(String(v?.[0] ?? ""));
+        this.release = m ? m[1] : null;
+        info.release = this.release;
+      }
+      return info;
     } catch (e) {
       void this.proxy?.close();
       throw e;
@@ -307,16 +422,22 @@ var LsBackend = class extends import_events.EventEmitter {
     }
     this.log(`starting language server: ${this.opts.serverPath} ${args.map((a) => a.replace(/matlabUrl=.*$/, "matlabUrl=<relay>")).join(" ")}`);
     const env = { ...process.env, ...this.opts.env, ELECTRON_RUN_AS_NODE: "1" };
-    const child = (0, import_child_process.fork)(this.opts.serverPath, args, {
-      cwd: this.opts.cwd,
-      execPath: this.opts.execPath ?? process.execPath,
-      execArgv: [],
-      env,
-      stdio: ["ignore", "pipe", "pipe", "ipc"]
-    });
+    const execPath = this.opts.execPath ?? process.execPath;
+    const stdio = ["ignore", "pipe", "pipe", "ipc"];
+    const child = matlabUrl ? (0, import_child_process.spawn)(
+      execPath,
+      ["-e", LOADER_SOURCE, this.opts.serverPath, ...args],
+      { cwd: this.opts.cwd, env: { ...env, MCW_MATLAB_RELEASE: this.releaseHint ?? FALLBACK_RELEASE }, stdio, windowsHide: true }
+    ) : (0, import_child_process.fork)(this.opts.serverPath, args, { cwd: this.opts.cwd, execPath, execArgv: [], env, stdio });
     this.child = child;
     child.stdout?.on("data", (b) => this.log(`[ls] ${b.toString().trimEnd()}`));
-    child.stderr?.on("data", (b) => this.log(`[ls err] ${b.toString().trimEnd()}`));
+    child.stderr?.on("data", (b) => {
+      const text = b.toString();
+      if (text.includes(PATCH_MISSING_MARKER)) {
+        this.onPatchMissing?.();
+      }
+      this.log(`[ls err] ${text.trimEnd()}`);
+    });
     const trace2 = this.opts.trace;
     const peer = new JsonRpcPeer({
       send: (m) => {
@@ -384,6 +505,9 @@ var LsBackend = class extends import_events.EventEmitter {
       if (d?.connectionStatus === "disconnected") {
         this.onDisconnected?.();
       }
+      if (d?.connectionStatus === "connected") {
+        this.onConnectorUp?.();
+      }
     });
     peer.onNotification("telemetry/logdata", () => {
     });
@@ -396,8 +520,17 @@ var LsBackend = class extends import_events.EventEmitter {
         }
         settled = true;
         clearTimeout(timer);
+        clearTimeout(engineTimer);
         reject(new Error(reason));
       };
+      let engineTimer;
+      if (this.opts.attach) {
+        this.onPatchMissing = () => fail("This version of the MATLAB extension is not supported by the Command Window yet (its language server changed). Please report it with the version number.");
+        this.onConnectorUp = () => {
+          clearTimeout(engineTimer);
+          engineTimer = setTimeout(() => fail("Reached the shared MATLAB, but its engine did not answer within 10 s. See View \u2192 Output \u2192 MATLAB Command Window."), 1e4);
+        };
+      }
       const timeoutMs = this.opts.startTimeoutMs ?? 18e4;
       const timer = setTimeout(() => fail(`MATLAB did not become ready within ${Math.round(timeoutMs / 1e3)} s.`), timeoutMs);
       this.onDisconnected = () => {
@@ -414,6 +547,7 @@ var LsBackend = class extends import_events.EventEmitter {
           if (!settled) {
             settled = true;
             clearTimeout(timer);
+            clearTimeout(engineTimer);
             resolve2({ release: this.release });
           }
         } else if (d?.state === "disconnected") {
@@ -559,62 +693,6 @@ function completionItems(result) {
     return void 0;
   }
   return items.filter((i) => !!i && typeof i.label === "string").map((i) => ({ label: i.label, kind: KIND[i.kind ?? 0] ?? "F" }));
-}
-
-// src/backend/sharedSession.ts
-var fs2 = __toESM(require("fs"));
-var os = __toESM(require("os"));
-var path = __toESM(require("path"));
-function sessionFilePath(env = process.env, platform = process.platform) {
-  if (env.MCW_SESSION_FILE) {
-    return env.MCW_SESSION_FILE;
-  }
-  let dir;
-  if (platform === "win32") {
-    dir = path.join(env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming"), "MathWorks", "MATLAB MCP Server");
-  } else if (platform === "darwin") {
-    dir = path.join(env.HOME ?? os.homedir(), "Library", "Application Support", "MathWorks", "MATLAB MCP Server");
-  } else {
-    dir = path.join(env.HOME ?? os.homedir(), ".MathWorks", "MATLABMCPServer");
-  }
-  return path.join(dir, "v1", "sessionDetails.json");
-}
-function readSharedSession(file = sessionFilePath(), alive = processAlive) {
-  let text;
-  let mtimeMs;
-  try {
-    text = fs2.readFileSync(file, "utf8");
-    mtimeMs = fs2.statSync(file).mtimeMs;
-  } catch {
-    return { ok: false, reason: "missing", file, message: "No shared MATLAB session found." };
-  }
-  let d;
-  try {
-    d = JSON.parse(text.replace(/^﻿/, ""));
-  } catch {
-    return { ok: false, reason: "invalid", file, message: `The shared-session file is not valid JSON: ${file}` };
-  }
-  const port = Number(d.port), pid = Number(d.pid);
-  const certificate = typeof d.certificate === "string" ? d.certificate : "";
-  const apiKey = typeof d.apiKey === "string" ? d.apiKey : "";
-  if (!port || !certificate || !apiKey) {
-    return { ok: false, reason: "invalid", file, message: `The shared-session file lacks port, certificate or apiKey: ${file}` };
-  }
-  if (pid && !alive(pid)) {
-    return { ok: false, reason: "stale", file, message: `The MATLAB that was shared (process ${pid}) is no longer running.` };
-  }
-  return {
-    ok: true,
-    session: { port, certificate, apiKey, pid, basePath: typeof d.basePath === "string" ? d.basePath : "", file, mtimeMs }
-  };
-}
-function processAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e) {
-    return e.code === "EPERM";
-  }
 }
 
 // src/matlabSession.ts
@@ -838,6 +916,18 @@ var MatlabSession = class extends import_events2.EventEmitter {
       this.finish(p, "cancelled");
     }
     this.backend.interrupt();
+    const job = this.queue.current;
+    if (!job || this._state !== "busy") {
+      return;
+    }
+    for (const ms of [2e3, 5e3]) {
+      setTimeout(() => {
+        if (this.queue.current === job && this._state === "busy") {
+          this.log(`still busy ${ms / 1e3} s after interrupt: sending it again`);
+          this.backend.interrupt();
+        }
+      }, ms).unref?.();
+    }
   }
   dispose() {
     this.backend.dispose();
@@ -1094,11 +1184,12 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
     attach: shared,
     cwd: work,
     execPath: process.execPath,
-    startTimeoutMs: 12e4,
+    startTimeoutMs: 2e4,
     trace: (dir, msg) => trace.push({ t: now(), dir, msg })
   });
   backend.on("log", (m) => lsLog.push(`${now()}ms ${m}`));
   const session = new MatlabSession(backend, (m) => lsLog.push(`${now()}ms [session] ${m}`));
+  running = { server, work, session };
   let from = mark("S1");
   say("Attaching to the shared MATLAB\u2026");
   const t1 = Date.now();
@@ -1116,20 +1207,20 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
     from,
     { ms: Date.now() - t1, release: session.release }
   );
-  await sleep(3e3);
+  await sleep(1500);
   results[results.length - 1].events = eventsFrom(from);
   await backend.feval("addpath", 0, [work]).catch((e) => say(`addpath failed: ${e}`));
   if (!argv.includes("--no-manual")) {
     await probe("A1", "output of commands typed in the MATLAB extension's terminal reaches our window", async () => {
       from = mark("A1");
-      say(">>> NOW: in VS Code's MATLAB terminal (the MATLAB extension's), type   disp('hello from the official terminal')   and press Enter. Waiting 45 s\u2026");
-      const got = await waitMsg(from, (m) => m.method === "text" && /hello from the official terminal/.test(m.params?.text ?? ""), 45e3);
+      say(">>> NOW: in VS Code's MATLAB terminal (the MATLAB extension's), type   disp('hello from the official terminal')   and press Enter. Waiting 30 s\u2026");
+      const got = await waitMsg(from, (m) => m.method === "text" && /hello from the official terminal/.test(m.params?.text ?? ""), 3e4);
       const prompts = received(from).map((e) => e.msg).filter(isPrompt()).map((m) => m.params.state);
       record(
         "A1",
         "output of commands typed in the MATLAB extension's terminal reaches our window",
         got ? true : null,
-        got ? "yes, the text arrived here too" : "no text arrived here within 45 s (either not typed, or each client only gets its own output)",
+        got ? "yes, the text arrived here too" : "no text arrived here within 30 s (either not typed, or each client only gets its own output)",
         from,
         { promptsSeen: prompts }
       );
@@ -1138,7 +1229,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
   await probe("S2", "prompt states and output for a simple command", async () => {
     from = mark("S2");
     void backend.eval("spikeX = 1 + 1");
-    const resp = await waitMsg(from, (m) => m.method === "evalResponse", 15e3);
+    const resp = await waitMsg(from, (m) => m.method === "evalResponse", 8e3);
     await sleep(500);
     const ev = received(from).map((e) => e.msg);
     const states = ev.filter(isPrompt()).map((m) => `${m.params.state}/${m.params.isIdle}`);
@@ -1153,7 +1244,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
   await probe("S3", "order of evalResponse and the final idle prompt", async () => {
     from = mark("S3");
     void backend.eval("pause(0.5)");
-    await waitMsg(from, (m) => m.method === "evalResponse", 15e3);
+    await waitMsg(from, (m) => m.method === "evalResponse", 8e3);
     await sleep(500);
     const order = received(from).map((e) => e.msg).filter((m) => m.method === "evalResponse" || isIdlePrompt(m)).map((m) => m.method === "evalResponse" ? "evalResponse" : `prompt ${m.params.state}`);
     record("S3", "order of evalResponse and the final idle prompt", null, order.join(" then ") || "(no events)", from);
@@ -1194,7 +1285,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
   await probe("S6", "keyboard / K>>: states, DebuggingStateChange, when evalResponses come", async () => {
     from = mark("S6");
     void backend.eval(`spike_keyboard_fn()`);
-    const dbg = await waitMsg(from, isPrompt("DEBUG"), 15e3);
+    const dbg = await waitMsg(from, isPrompt("DEBUG"), 8e3);
     const kbId = lastEvalId(from);
     await sleep(300);
     const mid = mark("S6 at K>>");
@@ -1203,7 +1294,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
     await sleep(300);
     const cont = mark("S6 dbcont");
     void backend.eval("dbcont");
-    await waitMsg(cont, isPrompt("READY"), 15e3);
+    await waitMsg(cont, isPrompt("READY"), 8e3);
     await sleep(500);
     const kbResp = received(from).some((e) => e.msg.method === "evalResponse" && e.msg.params.requestId === kbId);
     record(
@@ -1238,7 +1329,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
   await probe("S9", "error text of a failing script run with run(): frames, hyperlinks, stream", async () => {
     from = mark("S9");
     void backend.eval(`run('${path2.join(work, "spike_error_demo.m").replace(/'/g, "''")}')`);
-    await waitMsg(from, isPrompt("READY"), 15e3);
+    await waitMsg(from, isPrompt("READY"), 8e3);
     await sleep(500);
     const errText = received(from).filter((e) => e.msg.method === "text").map((e) => `[stream ${e.msg.params.stream}] ${e.msg.params.text}`).join("");
     record(
@@ -1269,7 +1360,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
   await probe("S11", "warnings and default display formatting", async () => {
     from = mark("S11");
     void backend.eval(`warning('spike warning'); spikeM = magic(3), spikeS = struct('a', 1, 'b', 'text'), spikeStr = "hello"`);
-    await waitMsg(from, isPrompt("READY"), 15e3);
+    await waitMsg(from, isPrompt("READY"), 8e3);
     await sleep(500);
     record("S11", "warnings and default display formatting", null, "see raw events", from);
   });
@@ -1280,14 +1371,14 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
     await sleep(1500);
     let t = Date.now();
     backend.interrupt();
-    const r1 = await waitMsg(from, isPrompt("READY"), 15e3);
+    const r1 = await waitMsg(from, isPrompt("READY"), 8e3);
     const pauseMs = Date.now() - t;
     const from2 = mark("S12 loop");
     void backend.eval("spikeN = 0; while true, spikeN = spikeN + 1; end");
     await sleep(2e3);
     t = Date.now();
     backend.interrupt();
-    const r2 = await waitMsg(from2, isPrompt("READY"), 15e3);
+    const r2 = await waitMsg(from2, isPrompt("READY"), 8e3);
     const loopMs = Date.now() - t;
     await sleep(500);
     record(
@@ -1301,13 +1392,13 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
   await probe("S13", "fevals at K>> see the stopped frame (Workspace view while debugging)", async () => {
     from = mark("S13");
     void backend.eval("spike_keyboard_fn()");
-    await waitMsg(from, isPrompt("DEBUG"), 15e3);
+    await waitMsg(from, isPrompt("DEBUG"), 8e3);
     await sleep(300);
     const v = await backend.feval("who", 1, []).catch((e) => e);
     const listed = JSON.stringify(v);
     const ev = await backend.feval("evalc", 1, ["localVar"]).catch((e) => e);
     void backend.eval("dbquit");
-    await waitMsg(mark("S13 quit"), isPrompt("READY"), 15e3);
+    await waitMsg(mark("S13 quit"), isPrompt("READY"), 8e3);
     record(
       "S13",
       "fevals at K>> see the stopped frame (completion/help while debugging)",
@@ -1338,7 +1429,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
     from = mark("S15");
     const t = now();
     void backend.eval("for spikeK = 1:4, disp(spikeK), pause(0.5), end");
-    await waitMsg(from, (m) => m.method === "evalResponse", 15e3);
+    await waitMsg(from, (m) => m.method === "evalResponse", 8e3);
     const times = received(from).filter((e) => e.msg.method === "text").map((e) => e.t - t);
     const spread = times.length >= 4 && times[times.length - 1] - times[0] >= 1e3;
     record("S15", "streaming: output arrives while a command runs", spread, `text event times (ms after send): ${times.join(", ")}`, from);
@@ -1366,7 +1457,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
   await probe("S17", "multi-line code in one evalRequest", async () => {
     from = mark("S17");
     void backend.eval("spikeA = 0;\nfor spikeK = 1:3\n    spikeA = spikeA + spikeK;\nend\ndisp(spikeA)\n%% a section marker\nfprintf('done %d\\n', spikeA);");
-    await waitMsg(from, isPrompt("READY"), 15e3);
+    await waitMsg(from, isPrompt("READY"), 8e3);
     await sleep(500);
     record("S17", "multi-line code in one evalRequest", /6/.test(texts(from)) && /done 6/.test(texts(from)), `output ${JSON.stringify(texts(from))}`, from);
   });
@@ -1382,7 +1473,7 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
       from = mark("S21");
       const t = Date.now();
       void backend.eval("spikeFig = figure('Name', 'MATLAB companion spike'); plot(1:10); drawnow; pause(2); close(spikeFig)");
-      const r = await waitMsg(from, isPrompt("READY"), 6e4);
+      const r = await waitMsg(from, isPrompt("READY"), 2e4);
       record(
         "S21",
         "figures: does plotting work and return to the prompt?",
@@ -1406,11 +1497,19 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
     const sub = (t) => out.push(t);
     session.on("output", sub);
     const problems = [];
-    const k1 = await session.sendLine("spikeQ = 7");
+    const step = async (name, p, ms = 1e4) => {
+      const r = await Promise.race([p, sleep(ms).then(() => "timeout")]);
+      if (r === "timeout") {
+        problems.push(`${name}: no answer within ${ms / 1e3} s (state ${session.state})`);
+      }
+      return r;
+    };
+    const k1 = await step("sendLine", session.sendLine("spikeQ = 7"));
     if (k1 !== "ready") {
       problems.push(`sendLine -> ${k1}`);
     }
-    const [a, b] = await Promise.all([session.sendLine("pause(0.3); disp('q-first')"), session.sendLine("disp('q-second')")]);
+    const both = await step("queue", Promise.all([session.sendLine("pause(0.3); disp('q-first')"), session.sendLine("disp('q-second')")]));
+    const [a, b] = both === "timeout" ? ["timeout", "timeout"] : both;
     if (a !== "ready" || b !== "ready" || out.join("").indexOf("q-first") > out.join("").indexOf("q-second")) {
       problems.push("queue order");
     }
@@ -1423,25 +1522,29 @@ In VS Code, open a .m file so the MATLAB extension starts MATLAB, then in its MA
     } else {
       session.sendInput("3");
     }
-    if (await asking !== "ready") {
+    if (await step("input", asking) !== "ready") {
       problems.push("input run did not finish ready");
     }
-    const kb = await session.sendLine("spike_keyboard_fn()");
+    const kb = await step("keyboard", session.sendLine("spike_keyboard_fn()"));
     if (kb !== "debug") {
       problems.push(`keyboard -> ${kb}`);
     }
-    const q = await session.query("who", [], { background: true });
-    if (!q.ok) {
+    const q = await step("query at K>>", session.query("who", [], { background: true }));
+    if (q === "timeout" || !q.ok) {
       problems.push("query at K>> failed");
     }
-    if (await session.sendLine("dbcont") !== "ready") {
+    if (await step("dbcont", session.sendLine("dbcont")) !== "ready") {
       problems.push("dbcont did not end ready");
     }
     const long = session.sendLine("pause(20)");
     await sleep(1e3);
     session.interrupt();
-    if (await long !== "ready") {
+    if (await step("interrupt", long) !== "ready") {
       problems.push("interrupt did not end ready");
+    }
+    if (session.state !== "idle") {
+      session.interrupt();
+      await sleep(500);
     }
     if (session.state !== "idle") {
       problems.push(`final state ${session.state}`);
@@ -1462,12 +1565,23 @@ function writeProbeFiles(dir) {
   fs3.writeFileSync(path2.join(dir, "spike_documented.m"), "function y = spike_documented(x)\n%SPIKE_DOCUMENTED  Doubles X.\n%   Y = SPIKE_DOCUMENTED(X) returns 2*X.\ny = 2 * x;\nend\n");
 }
 var sharedPid = 0;
+var running;
+var finished = false;
 async function finish(server, work, session) {
+  if (finished) {
+    return;
+  }
+  finished = true;
   if (session && session.state !== "exited") {
-    await session.query("rmpath", [work], { nargout: 0 }).catch(() => void 0);
+    if (session.state !== "idle") {
+      session.interrupt();
+      await sleep(500);
+    }
+    const clean = "mcwP = strsplit(path, pathsep); mcwP = mcwP(contains(mcwP, 'mcw-spike-')); if ~isempty(mcwP), rmpath(mcwP{:}); end; clear mcwP";
+    await Promise.race([session.query("evalin", ["base", clean], { nargout: 0 }).catch(() => void 0), sleep(3e3)]);
   }
   session?.dispose();
-  await sleep(3e3);
+  await sleep(1500);
   if (sharedPid) {
     const alive = processAlive(sharedPid);
     results.push({
@@ -1520,6 +1634,10 @@ process.on("SIGINT", () => {
   say("Interrupted; writing partial results.");
   void finish(findServer() ?? "?", "?");
 });
+setTimeout(() => {
+  say("The spike is taking longer than 4 minutes: writing partial results.");
+  void finish(running?.server ?? findServer() ?? "?", running?.work ?? "?", running?.session).then(() => process.exit(1));
+}, 24e4).unref();
 main().catch((e) => {
   console.error(e);
   void finish(findServer() ?? "?", "?");

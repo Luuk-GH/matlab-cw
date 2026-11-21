@@ -3,7 +3,14 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { readSharedSession, sessionFilePath } from '../src/backend/sharedSession';
+import { readSharedSession, releaseFromPath, sessionFilePath } from '../src/backend/sharedSession';
+
+assert.strictEqual(releaseFromPath('C:\\Program Files\\MATLAB\\R2026b\\bin\\win64\\MATLAB.exe\r\n'), 'R2026b');
+assert.strictEqual(releaseFromPath('/usr/local/MATLAB/R2024a/bin/glnxa64/MATLAB'), 'R2024a');
+assert.strictEqual(releaseFromPath('/Applications/MATLAB_R2025b.app/bin/maca64/MATLAB'), 'R2025b');
+assert.strictEqual(releaseFromPath('/Applications/R2025b.app/bin/maca64/MATLAB'), 'R2025b');
+assert.strictEqual(releaseFromPath('D:\\tools\\matlab\\bin\\win64\\MATLAB.exe'), null);
+assert.strictEqual(releaseFromPath(''), null);
 
 // Locations ([code] DefaultAppDataLocator.m of the MATLAB MCP Server Toolbox).
 assert.strictEqual(sessionFilePath({ APPDATA: 'C:\\Users\\u\\AppData\\Roaming' }, 'win32'),

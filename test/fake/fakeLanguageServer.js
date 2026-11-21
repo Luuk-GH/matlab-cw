@@ -108,6 +108,18 @@ const matlabUrl = (process.argv.find(a => a.startsWith('--matlabUrl=')) ?? '').s
  * the URL). The fake proves the route works end to end: a Bayeux handshake POST and a WebSocket upgrade through the
  * URL (our relay) must reach the fake connector with the right API key. When that socket closes, MATLAB is "gone".
  */
+/**
+ * Mirrors the real server's bug in --matlabUrl mode ([code] verified on R2026b with extension 1.3.16): the remote
+ * session never sets matlabRelease, so the MVM layer silently never becomes ready. src/backend/lsLoader.ts patches
+ * this exact text in memory; without that patch the fake, like the real server, never reports the engine ready.
+ */
+class AbstractMatlabSession { constructor() { this.matlabRelease = null; } }
+class RemoteMatlabSession extends AbstractMatlabSession {
+  initialize(matlabConnection) {
+    this.matlabConnection = matlabConnection;
+  }
+}
+
 function attachMatlab() {
   const http = require('http');
   notify('matlab/connection/update/server', { connectionStatus: 'connecting' });
@@ -125,9 +137,12 @@ function attachMatlab() {
       up.on('upgrade', (_res, socket) => {
         socket.once('data', d => {
           if (String(d) !== 'ping') { return failed('websocket echo mismatch'); }
-          connected = true;
           notify('matlab/connection/update/server', { connectionStatus: 'connected' });
-          notify('mvmStateChange', { state: 'connected', release: RELEASE });
+          const session = new RemoteMatlabSession();
+          session.initialize(socket);
+          if (!session.matlabRelease) { log('attached, but no MATLAB release known: the MVM never becomes ready'); return; }
+          connected = true;
+          notify('mvmStateChange', { state: 'connected', release: session.matlabRelease });
           setPrompt('READY');
           log('attached to shared MATLAB');
         });
@@ -214,9 +229,12 @@ function finishEval(respond, state) {
   if (env.MCW_FAKE_RESPONSE_FIRST === '1') { respond(); setPrompt(state); } else { setPrompt(state); respond(); }
 }
 
+let interruptsToIgnore = env.MCW_FAKE_IGNORE_FIRST_INTERRUPT === '1' ? 1 : 0;
 function onInterrupt() {
   // [code] interruptRequest -> mvm.interrupt(). [docs] Ctrl+C aborts the running statement, the workspace is kept.
   if (!running) { return; }
+  // [verified once on R2026b] MATLAB sometimes ignores an interrupt; a second one works.
+  if (interruptsToIgnore > 0) { interruptsToIgnore--; log('ignoring this interrupt'); return; }
   running.cancel('interrupt');
   if (inputWaiter) { const w = inputWaiter; inputWaiter = null; w(null); }
   if (pauseWaiter) { const w = pauseWaiter; pauseWaiter = null; w(); }
@@ -254,11 +272,14 @@ function reportError(e) {
   }
   if (e instanceof Quit) { return; }
   if (!(e instanceof MatlabErr)) { err(`Internal fake error: ${e && e.stack || e}\n`); return; }
-  let text = '';
+  // [verified, R2026b] wrapped in {\b ... }\b; each frame is followed by its code line and a ^^^ line:
+  //   "{\b<message>\n\nError in <name> (line <n>)\n<code>\n^^^^\nError in run (line 100)\n...\n}\b \n"
+  let text = '{\x08';
   if (e.using) { text += `Error using ${e.using}\n`; }
   text += `${e.msg}\n`;
-  for (const f of e.stack) { text += `\nError in ${f.name} (line ${f.line})\n${f.code}\n`; }
-  err(text);
+  if (e.stack.length) { text += '\n'; }
+  for (const f of e.stack) { text += `Error in ${f.name} (line ${f.line})\n${f.code}\n${'^'.repeat(Math.max(1, f.code.trim().length))}\n`; }
+  err(`${text}}\x08 \n`);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -418,7 +439,7 @@ async function evaluateAsync(expr, ws, ctx) {
   // [code] the input shadow publishes the prompt string (mvmInputPrompt) and the state becomes INPUT.
   // [guess] order: mvmInputPrompt first, then mvmPromptChange INPUT (S8). MATLAB itself may also print the prompt.
   if (env.MCW_FAKE_ECHO_INPUT_PROMPT === '1') { out(promptText); }
-  notify('mvmInputPrompt', promptText);
+  notify('mvmInputPrompt', [promptText]);   // [verified, R2026b] an array with the prompt string
   setPrompt('INPUT');
   const answer = await new Promise(r => { inputWaiter = r; });
   if (ctx.cancelled || answer === null) { throw new Interrupt(); }

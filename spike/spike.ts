@@ -112,10 +112,11 @@ async function main(): Promise<void> {
 
   const backend = new LsBackend({
     serverPath: server, attach: shared, cwd: work, execPath: process.execPath,
-    startTimeoutMs: 120000, trace: (dir, msg) => trace.push({ t: now(), dir, msg }),
+    startTimeoutMs: 20000, trace: (dir, msg) => trace.push({ t: now(), dir, msg }),
   });
   backend.on('log', m => lsLog.push(`${now()}ms ${m}`));
   const session = new MatlabSession(backend, m => lsLog.push(`${now()}ms [session] ${m}`));
+  running = { server, work, session };
 
   // S1 startup
   let from = mark('S1');
@@ -129,18 +130,18 @@ async function main(): Promise<void> {
   }
   record('S1', 'attach to the shared MATLAB (relay + language server with --matlabUrl)', true,
     `connected after ${((Date.now() - t1) / 1000).toFixed(1)} s, release ${session.release}`, from, { ms: Date.now() - t1, release: session.release });
-  await sleep(3000);   // let the language server's own startup fevals (startupHelper, graphics prewarm) finish
+  await sleep(1500);   // let the language server's own startup fevals (startupHelper, graphics prewarm) finish
   results[results.length - 1].events = eventsFrom(from);
   await backend.feval('addpath', 0, [work]).catch(e => say(`addpath failed: ${e}`));
 
   if (!argv.includes('--no-manual')) {
     await probe('A1', 'output of commands typed in the MATLAB extension\'s terminal reaches our window', async () => {
       from = mark('A1');
-      say('>>> NOW: in VS Code\'s MATLAB terminal (the MATLAB extension\'s), type   disp(\'hello from the official terminal\')   and press Enter. Waiting 45 s…');
-      const got = await waitMsg(from, m => m.method === 'text' && /hello from the official terminal/.test(m.params?.text ?? ''), 45000);
+      say('>>> NOW: in VS Code\'s MATLAB terminal (the MATLAB extension\'s), type   disp(\'hello from the official terminal\')   and press Enter. Waiting 30 s…');
+      const got = await waitMsg(from, m => m.method === 'text' && /hello from the official terminal/.test(m.params?.text ?? ''), 30000);
       const prompts = received(from).map(e => e.msg).filter(isPrompt()).map(m => m.params.state);
       record('A1', 'output of commands typed in the MATLAB extension\'s terminal reaches our window', got ? true : null,
-        got ? 'yes, the text arrived here too' : 'no text arrived here within 45 s (either not typed, or each client only gets its own output)',
+        got ? 'yes, the text arrived here too' : 'no text arrived here within 30 s (either not typed, or each client only gets its own output)',
         from, { promptsSeen: prompts });
     });
   }
@@ -148,7 +149,7 @@ async function main(): Promise<void> {
   await probe('S2', 'prompt states and output for a simple command', async () => {
     from = mark('S2');
     void backend.eval('spikeX = 1 + 1');
-    const resp = await waitMsg(from, m => m.method === 'evalResponse', 15000);
+    const resp = await waitMsg(from, m => m.method === 'evalResponse', 8000);
     await sleep(500);
     const ev = received(from).map(e => e.msg);
     const states = ev.filter(isPrompt()).map(m => `${m.params.state}/${m.params.isIdle}`);
@@ -159,7 +160,7 @@ async function main(): Promise<void> {
   await probe('S3', 'order of evalResponse and the final idle prompt', async () => {
     from = mark('S3');
     void backend.eval('pause(0.5)');
-    await waitMsg(from, m => m.method === 'evalResponse', 15000);
+    await waitMsg(from, m => m.method === 'evalResponse', 8000);
     await sleep(500);
     const order = received(from).map(e => e.msg).filter(m => m.method === 'evalResponse' || isIdlePrompt(m)).map(m => m.method === 'evalResponse' ? 'evalResponse' : `prompt ${m.params.state}`);
     record('S3', 'order of evalResponse and the final idle prompt', null, order.join(' then ') || '(no events)', from);
@@ -192,7 +193,7 @@ async function main(): Promise<void> {
   await probe('S6', 'keyboard / K>>: states, DebuggingStateChange, when evalResponses come', async () => {
     from = mark('S6');
     void backend.eval(`spike_keyboard_fn()`);
-    const dbg = await waitMsg(from, isPrompt('DEBUG'), 15000);
+    const dbg = await waitMsg(from, isPrompt('DEBUG'), 8000);
     const kbId = lastEvalId(from);
     await sleep(300);
     const mid = mark('S6 at K>>');
@@ -201,7 +202,7 @@ async function main(): Promise<void> {
     await sleep(300);
     const cont = mark('S6 dbcont');
     void backend.eval('dbcont');
-    await waitMsg(cont, isPrompt('READY'), 15000);
+    await waitMsg(cont, isPrompt('READY'), 8000);
     await sleep(500);
     const kbResp = received(from).some(e => e.msg.method === 'evalResponse' && e.msg.params.requestId === kbId);
     record('S6', 'keyboard / K>>: states, DebuggingStateChange, when evalResponses come', !!dbg,
@@ -228,7 +229,7 @@ async function main(): Promise<void> {
   await probe('S9', 'error text of a failing script run with run(): frames, hyperlinks, stream', async () => {
     from = mark('S9');
     void backend.eval(`run('${path.join(work, 'spike_error_demo.m').replace(/'/g, "''")}')`);
-    await waitMsg(from, isPrompt('READY'), 15000);
+    await waitMsg(from, isPrompt('READY'), 8000);
     await sleep(500);
     const errText = received(from).filter(e => e.msg.method === 'text').map(e => `[stream ${e.msg.params.stream}] ${e.msg.params.text}`).join('');
     record('S9', 'error text of a failing script run with run(): frames, hyperlinks, stream', null,
@@ -251,7 +252,7 @@ async function main(): Promise<void> {
   await probe('S11', 'warnings and default display formatting', async () => {
     from = mark('S11');
     void backend.eval("warning('spike warning'); spikeM = magic(3), spikeS = struct('a', 1, 'b', 'text'), spikeStr = \"hello\"");
-    await waitMsg(from, isPrompt('READY'), 15000);
+    await waitMsg(from, isPrompt('READY'), 8000);
     await sleep(500);
     record('S11', 'warnings and default display formatting', null, 'see raw events', from);
   });
@@ -263,14 +264,14 @@ async function main(): Promise<void> {
     await sleep(1500);
     let t = Date.now();
     backend.interrupt();
-    const r1 = await waitMsg(from, isPrompt('READY'), 15000);
+    const r1 = await waitMsg(from, isPrompt('READY'), 8000);
     const pauseMs = Date.now() - t;
     const from2 = mark('S12 loop');
     void backend.eval('spikeN = 0; while true, spikeN = spikeN + 1; end');
     await sleep(2000);
     t = Date.now();
     backend.interrupt();
-    const r2 = await waitMsg(from2, isPrompt('READY'), 15000);
+    const r2 = await waitMsg(from2, isPrompt('READY'), 8000);
     const loopMs = Date.now() - t;
     await sleep(500);
     record('S12', 'interrupt: pause(30) and a busy loop', !!r1 && !!r2,
@@ -280,13 +281,13 @@ async function main(): Promise<void> {
   await probe('S13', 'fevals at K>> see the stopped frame (Workspace view while debugging)', async () => {
     from = mark('S13');
     void backend.eval('spike_keyboard_fn()');
-    await waitMsg(from, isPrompt('DEBUG'), 15000);
+    await waitMsg(from, isPrompt('DEBUG'), 8000);
     await sleep(300);
     const v = await backend.feval('who', 1, []).catch(e => e);
     const listed = JSON.stringify(v);
     const ev = await backend.feval('evalc', 1, ['localVar']).catch(e => e);
     void backend.eval('dbquit');
-    await waitMsg(mark('S13 quit'), isPrompt('READY'), 15000);
+    await waitMsg(mark('S13 quit'), isPrompt('READY'), 8000);
     record('S13', 'fevals at K>> see the stopped frame (completion/help while debugging)', /localVar/.test(listed),
       `who at K>> ${/localVar/.test(listed) ? 'lists the function\'s localVar' : 'does NOT list localVar (it sees another workspace)'}; evalc('localVar') -> ${JSON.stringify(String(ev)).slice(0, 120)}`, from, listed);
   });
@@ -307,7 +308,7 @@ async function main(): Promise<void> {
     from = mark('S15');
     const t = now();
     void backend.eval('for spikeK = 1:4, disp(spikeK), pause(0.5), end');
-    await waitMsg(from, m => m.method === 'evalResponse', 15000);
+    await waitMsg(from, m => m.method === 'evalResponse', 8000);
     const times = received(from).filter(e => e.msg.method === 'text').map(e => e.t - t);
     const spread = times.length >= 4 && times[times.length - 1] - times[0] >= 1000;
     record('S15', 'streaming: output arrives while a command runs', spread, `text event times (ms after send): ${times.join(', ')}`, from);
@@ -329,7 +330,7 @@ async function main(): Promise<void> {
   await probe('S17', 'multi-line code in one evalRequest', async () => {
     from = mark('S17');
     void backend.eval("spikeA = 0;\nfor spikeK = 1:3\n    spikeA = spikeA + spikeK;\nend\ndisp(spikeA)\n%% a section marker\nfprintf('done %d\\n', spikeA);");
-    await waitMsg(from, isPrompt('READY'), 15000);
+    await waitMsg(from, isPrompt('READY'), 8000);
     await sleep(500);
     record('S17', 'multi-line code in one evalRequest', /6/.test(texts(from)) && /done 6/.test(texts(from)), `output ${JSON.stringify(texts(from))}`, from);
   });
@@ -347,7 +348,7 @@ async function main(): Promise<void> {
       from = mark('S21');
       const t = Date.now();
       void backend.eval("spikeFig = figure('Name', 'MATLAB companion spike'); plot(1:10); drawnow; pause(2); close(spikeFig)");
-      const r = await waitMsg(from, isPrompt('READY'), 60000);
+      const r = await waitMsg(from, isPrompt('READY'), 20000);
       record('S21', 'figures: does plotting work and return to the prompt?', !!r,
         `${r ? `back at READY after ${Date.now() - t} ms` : 'did not return within 60 s'} (watch the screen: a figure window should appear for 2 s)`, from);
     });
@@ -369,23 +370,30 @@ async function main(): Promise<void> {
     const sub = (t: string) => out.push(t);
     session.on('output', sub);
     const problems: string[] = [];
-    const k1 = await session.sendLine('spikeQ = 7');
+    const step = async <T>(name: string, p: Promise<T>, ms = 10000): Promise<T | 'timeout'> => {
+      const r = await Promise.race([p, sleep(ms).then(() => 'timeout' as const)]);
+      if (r === 'timeout') { problems.push(`${name}: no answer within ${ms / 1000} s (state ${session.state})`); }
+      return r;
+    };
+    const k1 = await step('sendLine', session.sendLine('spikeQ = 7'));
     if (k1 !== 'ready') { problems.push(`sendLine -> ${k1}`); }
-    const [a, b] = await Promise.all([session.sendLine("pause(0.3); disp('q-first')"), session.sendLine("disp('q-second')")]);
+    const both = await step('queue', Promise.all([session.sendLine("pause(0.3); disp('q-first')"), session.sendLine("disp('q-second')")]));
+    const [a, b] = both === 'timeout' ? ['timeout', 'timeout'] : both;
     if (a !== 'ready' || b !== 'ready' || out.join('').indexOf('q-first') > out.join('').indexOf('q-second')) { problems.push('queue order'); }
     const asking = session.sendLine("spikeQ2 = input('session asks: ')");
     for (let i = 0; i < 100 && session.state !== 'input'; i++) { await sleep(50); }
     if (session.state !== 'input') { problems.push(`state ${session.state} instead of input`); } else { session.sendInput('3'); }
-    if (await asking !== 'ready') { problems.push('input run did not finish ready'); }
-    const kb = await session.sendLine('spike_keyboard_fn()');
+    if (await step('input', asking) !== 'ready') { problems.push('input run did not finish ready'); }
+    const kb = await step('keyboard', session.sendLine('spike_keyboard_fn()'));
     if (kb !== 'debug') { problems.push(`keyboard -> ${kb}`); }
-    const q = await session.query<unknown>('who', [], { background: true });
-    if (!q.ok) { problems.push('query at K>> failed'); }
-    if (await session.sendLine('dbcont') !== 'ready') { problems.push('dbcont did not end ready'); }
+    const q = await step('query at K>>', session.query<unknown>('who', [], { background: true }));
+    if (q === 'timeout' || !q.ok) { problems.push('query at K>> failed'); }
+    if (await step('dbcont', session.sendLine('dbcont')) !== 'ready') { problems.push('dbcont did not end ready'); }
     const long = session.sendLine('pause(20)');
     await sleep(1000);
     session.interrupt();
-    if (await long !== 'ready') { problems.push('interrupt did not end ready'); }
+    if (await step('interrupt', long) !== 'ready') { problems.push('interrupt did not end ready'); }
+    if (session.state !== 'idle') { session.interrupt(); await sleep(500); }
     if (session.state !== 'idle') { problems.push(`final state ${session.state}`); }
     record('S24', 'session core end to end (queue, input, keyboard, interrupt, queries)', problems.length === 0,
       problems.length ? problems.join('; ') : 'all steps behaved as the extension expects', from);
@@ -401,13 +409,21 @@ function writeProbeFiles(dir: string): void {
 }
 
 let sharedPid = 0;
+/** For the watchdog: what finish() needs to clean up (remove the work folder from the path, disconnect). */
+let running: { server: string; work: string; session: MatlabSession } | undefined;
+let finished = false;
 
 async function finish(server: string, work: string, session?: MatlabSession): Promise<void> {
+  if (finished) { return; }
+  finished = true;
   if (session && session.state !== 'exited') {
-    await session.query('rmpath', [work], { nargout: 0 }).catch(() => undefined);
+    if (session.state !== 'idle') { session.interrupt(); await sleep(500); }
+    // Remove this run's work folder, and any left on the path by an earlier run that was killed.
+    const clean = "mcwP = strsplit(path, pathsep); mcwP = mcwP(contains(mcwP, 'mcw-spike-')); if ~isempty(mcwP), rmpath(mcwP{:}); end; clear mcwP";
+    await Promise.race([session.query('evalin', ['base', clean], { nargout: 0 }).catch(() => undefined), sleep(3000)]);
   }
   session?.dispose();
-  await sleep(3000);
+  await sleep(1500);
   if (sharedPid) {
     const alive = processAlive(sharedPid);
     results.push({ id: 'A2', title: 'after we disconnect, the shared MATLAB keeps running', ok: alive,
@@ -442,4 +458,9 @@ async function finish(server: string, work: string, session?: MatlabSession): Pr
 }
 
 process.on('SIGINT', () => { say('Interrupted; writing partial results.'); void finish(findServer() ?? '?', '?'); });
+// Never hang for long: after 4 minutes write what we have, clean up and stop.
+setTimeout(() => {
+  say('The spike is taking longer than 4 minutes: writing partial results.');
+  void finish(running?.server ?? findServer() ?? '?', running?.work ?? '?', running?.session).then(() => process.exit(1));
+}, 240000).unref();
 main().catch(e => { console.error(e); void finish(findServer() ?? '?', '?'); });

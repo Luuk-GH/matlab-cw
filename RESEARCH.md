@@ -166,6 +166,21 @@ Read from code, not run against MATLAB:
    matlab-proxy does for browsers), and starts its own instance of the official extension's language server with
    `--matlabUrl=<relay>`. The rest of the extension (session core, Command Window) is unchanged and talks the MVM
    notifications of §2.
+3a. **First real run (R2026b, extension 1.3.16, 2026-11-20):** the relay and Faye connection work (the server reports
+   `connected` after < 1 s), but the engine never became ready. Cause *(code)*: `RemoteMatlabSession` never sets
+   `matlabRelease`; `MVM._detectImpl` picks its protocol implementation from the release, throws "No valid MATLAB
+   release detected when trying to attach", and `_handleReadyError` swallows it, so no `mvmStateChange` ever arrives.
+   Fix: `src/backend/lsLoader.ts` runs the server bundle with one line added to `RemoteMatlabSession.initialize`
+   (`this.matlabRelease = process.env.MCW_MATLAB_RELEASE`), in memory; the installed extension is never modified. A
+   placeholder `R2023a` selects the default implementation (used by every release except R2021b–R2022b); the backend
+   reads the real release from `version` afterwards. If the patch point is missing (future extension versions) the
+   backend fails at once with "not supported".
+   *Correction after the second run:* the release also selects the API version in the default implementation
+   (23a → `r23a0`, 23b → `r23b0`, anything else → `r24a0`), and R2026b refused `r23a0` ("supported: r24a0, v7_0").
+   So the backend now reads the real release from the MATLAB process's executable path
+   (`…\MATLAB\R2026b\bin\win64\MATLAB.exe`) before starting the server, falling back to `R2024a`. With that,
+   the whole spike passes on R2026b. The MVM then attaches via `/mvm/attach/request` and gets its own
+   `channelPrefix`, which suggests one channel set per client *(code, unverified)*.
 4. **Why it should coexist:** the official extension's MATLAB already ran `initmatlabls` (the language server's MATLAB
    side: communication manager, `input`/`clc` shadows, completion helpers), which our language server instance needs in
    remote mode. MATLAB's engine service is designed for several clients (MATLAB Online uses it) *(guess)*.
