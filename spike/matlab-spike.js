@@ -577,7 +577,7 @@ var LsBackend = class extends import_events.EventEmitter {
       });
       void peer.request("initialize", {
         processId: process.pid,
-        clientInfo: { name: "matlab-command-window-community" },
+        clientInfo: { name: "matlab-command-window" },
         rootUri: null,
         capabilities: {}
       }, 6e4).then(() => {

@@ -5,17 +5,22 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { ConnectorTarget } from '../src/backend/connectorProxy';
 import { LsBackend } from '../src/backend/lsBackend';
 import { MatlabSession } from '../src/matlabSession';
 
 const root = path.resolve(__dirname, '..');
 const fake = path.join(root, 'test', 'fake', 'fakeLanguageServer.js');
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const fakeConnector = require('../test/fake/fakeConnector.js');
+/** The fake shared MATLAB's connector (the backend always attaches, like in the extension). */
+let target: ConnectorTarget;
 
 interface Captured { text: string; events: { t: number; text: string; stream: string }[] }
 
 async function withSession(env: Record<string, string>, fn: (s: MatlabSession, cap: Captured) => Promise<void>): Promise<void> {
-  const backend = new LsBackend({ serverPath: fake, execPath: process.execPath, env: { MCW_FAKE_STARTUP_MS: '50', ...env }, cwd: path.join(root, 'test', 'workspace') });
+  const backend = new LsBackend({ serverPath: fake, execPath: process.execPath, attach: target, env, cwd: path.join(root, 'test', 'workspace') });
   const logs: string[] = [];
   const s = new MatlabSession(backend, m => logs.push(m));
   const cap: Captured = { text: '', events: [] };
@@ -173,10 +178,9 @@ async function suite(variant: string, env: Record<string, string>): Promise<void
     assert.match(cap.text, /10/);
   });
 
-  // Startup failure is reported, not a hang.
-  const backend = new LsBackend({ serverPath: fake, execPath: process.execPath, env: { ...env, MCW_FAKE_FAIL_START: '1' } });
-  const s = new MatlabSession(backend);
-  await assert.rejects(s.start(), /could not be launched/);
+  // Startup failure is reported, not a hang (more attach failures in attach.test.ts).
+  const s = new MatlabSession(new LsBackend({ serverPath: fake, execPath: process.execPath, attach: { ...target, apiKey: 'wrong' }, env }));
+  await assert.rejects(s.start(), /Could not connect to the shared MATLAB/);
   assert.strictEqual(s.state, 'exited');
   assert.strictEqual(await s.sendLine('x = 1'), 'cancelled');
 
@@ -201,6 +205,8 @@ async function waitFor(cond: () => boolean, ms = 3000): Promise<void> {
 
 async function main(): Promise<void> {
   fs.mkdirSync(path.join(os.tmpdir(), 'mcw-test'), { recursive: true });
+  const conn = await fakeConnector.start({ apiKey: 'k' });
+  target = { port: conn.port, certificate: conn.certificate, apiKey: 'k', basePath: '' };
   await suite('defaults', {});
   await suite('evalResponse before prompt', { MCW_FAKE_RESPONSE_FIRST: '1' });
   await suite('fevals emit prompt changes', { MCW_FAKE_FEVAL_PROMPTS: '1' });

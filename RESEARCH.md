@@ -174,7 +174,8 @@ Read from code, not run against MATLAB:
    (`this.matlabRelease = process.env.MCW_MATLAB_RELEASE`), in memory; the installed extension is never modified. A
    placeholder `R2023a` selects the default implementation (used by every release except R2021b–R2022b); the backend
    reads the real release from `version` afterwards. If the patch point is missing (future extension versions) the
-   backend fails at once with "not supported".
+   backend fails at once with "not supported". *(Changed 2026-11-21: it now tries anyway, since a newer version may
+   have fixed the bug, and says "not supported" only if the engine then does not answer within 10 s.)*
    *Correction after the second run:* the release also selects the API version in the default implementation
    (23a → `r23a0`, 23b → `r23b0`, anything else → `r24a0`), and R2026b refused `r23a0` ("supported: r24a0, v7_0").
    So the backend now reads the real release from the MATLAB process's executable path

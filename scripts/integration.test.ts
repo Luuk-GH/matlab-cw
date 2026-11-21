@@ -41,7 +41,7 @@ export async function run(): Promise<void> {
   let cleanup: (() => Promise<void>) | undefined;
   const resultFile = process.env.MCW_IT_RESULT ?? path.join(os.tmpdir(), 'mcw-it-result.txt');
   try {
-    const ext = vscode.extensions.all.find(e => e.packageJSON?.name === 'matlab-command-window-community')!;
+    const ext = vscode.extensions.all.find(e => e.packageJSON?.name === 'matlab-command-window')!;
     const api = (await ext.activate()) as CommandWindowApi;
     const cw = api.commandWindow;
     const dir = vscode.workspace.workspaceFolders![0].uri.fsPath;
@@ -182,6 +182,17 @@ export async function run(): Promise<void> {
     // Real MATLAB: K>> can take seconds (the MATLAB extension's debugger reacts to the stop first).
     s = await untilMode('debug', real ? 20000 : 10000);
     check('keyboard shows the K>> prompt', s?.prompt === 'K>>', s?.prompt);
+    // At a breakpoint the MATLAB extension starts its 'matlab' debug session and shows its MATLAB terminal
+    // (MatlabDebugger.js; that extension is not loaded here, so do the same): the Command Window comes back.
+    api.keepInFront.matlabDebugStarted();
+    const matlabTerminal = vscode.window.createTerminal({ name: 'MATLAB' });
+    matlabTerminal.show();
+    const hidden = await waitFor(() => !cw.isVisible(), 1000);
+    const back = await waitFor(() => cw.isVisible(), 3000);
+    await sleep(1200);   // after the debounced reveal: still in front
+    check('the MATLAB terminal took the panel (as at a breakpoint)', !!hidden);
+    check('at a breakpoint the Command Window comes back in front of it', !!back && cw.isVisible());
+    matlabTerminal.dispose();
     await typeLine('dbcont');
     await untilText(/after keyboard/);
     s = await untilMode('ready');

@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { CommandWindowProvider, registerCommandWindow } from './commandWindow/provider';
+import { KeepInFront, keepCommandWindowInFront } from './keepInFront';
 import { runFile, runSection, runSelection } from './runInCommandWindow';
 import { ReportedError, SessionManager } from './session';
 
 let session: SessionManager | undefined;
 
-export interface CommandWindowApi { session: SessionManager; commandWindow: CommandWindowProvider; }
+export interface CommandWindowApi { session: SessionManager; commandWindow: CommandWindowProvider; keepInFront: KeepInFront; }
 
 export function activate(context: vscode.ExtensionContext): CommandWindowApi {
   const log = vscode.window.createOutputChannel('MATLAB Command Window', { log: true });
@@ -32,9 +33,10 @@ export function activate(context: vscode.ExtensionContext): CommandWindowApi {
     void vscode.window.showInformationMessage('Copied shareMATLABSession() — paste it in the MATLAB terminal of the MATLAB extension.');
   });
 
-  context.subscriptions.push(s, log);
+  const keepInFront = keepCommandWindowInFront(s);
+  context.subscriptions.push(s, log, keepInFront);
   const commandWindow = registerCommandWindow(context, s, log);
-  return { session: s, commandWindow };
+  return { session: s, commandWindow, keepInFront };
 }
 
 export function deactivate(): void {

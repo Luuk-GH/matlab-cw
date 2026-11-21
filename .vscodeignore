@@ -16,3 +16,4 @@ dist/**
 !dist/commandWindow.js
 README.md
 docs/**
+media/icon.svg

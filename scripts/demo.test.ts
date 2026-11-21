@@ -19,7 +19,7 @@ async function waitFor<T>(fn: () => Promise<T | undefined | false> | T | undefin
 export async function run(): Promise<void> {
   const dirOut = process.env.MCW_DEMO_DIR!;
   const log: string[] = [];
-  const ext = vscode.extensions.all.find(e => e.packageJSON?.name === 'matlab-command-window-community')!;
+  const ext = vscode.extensions.all.find(e => e.packageJSON?.name === 'matlab-command-window')!;
   const api = (await ext.activate()) as CommandWindowApi;
   const cw = api.commandWindow;
   const ws = vscode.workspace.workspaceFolders![0].uri.fsPath;

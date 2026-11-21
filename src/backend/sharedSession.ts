@@ -71,20 +71,43 @@ export function releaseFromPath(p: string | undefined | null): string | null {
 }
 
 /**
- * The release of a running MATLAB, read from its executable path (the session file does not contain it). Null when
- * it cannot be told, e.g. for an installation folder without the release in its name.
+ * The release from matlabroot/VersionInfo.xml (`<release>R2026b</release>`), looked up from the MATLAB executable's
+ * folder upwards (matlabroot/bin/<arch>/MATLAB.exe, matlabroot/bin/matlab, MATLAB_R2026b.app/bin/maci64/MATLAB).
+ * For installations whose folder name does not contain the release.
+ */
+export function releaseFromInstall(exe: string): string | null {
+  let dir = path.dirname(exe.trim());
+  for (let i = 0; i < 4; i++) {
+    try {
+      const m = /<release>\s*(R20\d\d[ab])\s*<\/release>/i.exec(fs.readFileSync(path.join(dir, 'VersionInfo.xml'), 'utf8'));
+      if (m) { return releaseFromPath(m[1]); }
+    } catch { /* not here */ }
+    const up = path.dirname(dir);
+    if (up === dir) { break; }
+    dir = up;
+  }
+  return null;
+}
+
+/**
+ * The release of a running MATLAB, read from its executable path or else its installation (the session file does not
+ * contain it). Null when it cannot be told; the backend then assumes FALLBACK_RELEASE (lsLoader.ts).
  */
 export async function matlabReleaseOfProcess(pid: number): Promise<string | null> {
   if (!pid) { return null; }
   try {
-    if (process.platform === 'linux') { return releaseFromPath(fs.readlinkSync(`/proc/${pid}/exe`)); }
-    const { execFile } = await import('child_process');
-    const run = (cmd: string, args: string[]) => new Promise<string>(resolve =>
-      execFile(cmd, args, { timeout: 5000, windowsHide: true }, (_e, out) => resolve(String(out ?? ''))));
-    if (process.platform === 'win32') {
-      return releaseFromPath(await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-Process -Id ${pid}).Path`]));
+    let exe: string;
+    if (process.platform === 'linux') { exe = fs.readlinkSync(`/proc/${pid}/exe`); }
+    else {
+      const { execFile } = await import('child_process');
+      const run = (cmd: string, args: string[]) => new Promise<string>(resolve =>
+        execFile(cmd, args, { timeout: 5000, windowsHide: true }, (_e, out) => resolve(String(out ?? ''))));
+      exe = process.platform === 'win32'
+        ? await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-Process -Id ${pid}).Path`])
+        : await run('ps', ['-o', 'comm=', '-p', String(pid)]);
     }
-    return releaseFromPath(await run('ps', ['-o', 'comm=', '-p', String(pid)]));
+    exe = exe.trim();
+    return exe ? releaseFromPath(exe) ?? releaseFromInstall(exe) : null;
   } catch {
     return null;
   }

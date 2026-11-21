@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { readSharedSession, releaseFromPath, sessionFilePath } from '../src/backend/sharedSession';
+import { readSharedSession, releaseFromInstall, releaseFromPath, sessionFilePath } from '../src/backend/sharedSession';
 
 assert.strictEqual(releaseFromPath('C:\\Program Files\\MATLAB\\R2026b\\bin\\win64\\MATLAB.exe\r\n'), 'R2026b');
 assert.strictEqual(releaseFromPath('/usr/local/MATLAB/R2024a/bin/glnxa64/MATLAB'), 'R2024a');
@@ -47,6 +47,13 @@ if (r.ok) {
 }
 r = readSharedSession(file, () => false);
 assert.ok(!r.ok && r.reason === 'stale', 'MATLAB process gone');
+
+// An installation folder without the release in its name: matlabroot/VersionInfo.xml tells it.
+const root = path.join(dir, 'MATLAB', 'current');
+fs.mkdirSync(path.join(root, 'bin', 'win64'), { recursive: true });
+fs.writeFileSync(path.join(root, 'VersionInfo.xml'), '<?xml version="1.0"?>\n<MathWorks_version_info>\n  <version>26.2.0</version>\n  <release>R2026b</release>\n</MathWorks_version_info>\n');
+assert.strictEqual(releaseFromInstall(path.join(root, 'bin', 'win64', 'MATLAB.exe') + '\r\n'), 'R2026b');
+assert.strictEqual(releaseFromInstall(path.join(dir, 'elsewhere', 'matlab')), null);
 
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('sharedSession: all assertions passed');

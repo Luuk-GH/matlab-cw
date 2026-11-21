@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.vsix
 spike/results/
+*.zip
+docs/video/*.mp4

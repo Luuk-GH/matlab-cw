@@ -2,7 +2,7 @@
 // official "MATLAB" extension), driven only through its MVM notifications. See RESEARCH.md §2 for the protocol,
 // read from mathworks/MATLAB-language-server v1.3.16 (src/mvm/MVMServer.ts, src/notifications/NotificationService.ts).
 //
-// With `attach`, the language server does NOT start MATLAB: it connects (--matlabUrl) through a local relay
+// The language server does NOT start MATLAB: it connects (--matlabUrl) through a local relay
 // (connectorProxy.ts) to the web connector of an existing MATLAB, normally the one the official extension runs,
 // shared with shareMATLABSession(). On dispose it only disconnects; the shared MATLAB keeps running.
 //
@@ -12,7 +12,7 @@
 // test/fake/fakeLanguageServer.js (which is what the automated tests use) and is checked by the spike.
 //
 // No VS Code dependency.
-import { ChildProcess, fork, spawn } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import { RunningProxy, startConnectorProxy, ConnectorTarget } from './connectorProxy';
 import { JsonRpcPeer } from './jsonRpc';
@@ -23,13 +23,9 @@ import { BackendEvents, CompletionCandidate, MatlabBackend, MatlabError, PromptS
 export interface LsBackendOptions {
   /** Path of the language server's entry point (`<official extension>/server/out/index.js`) or of the fake. */
   serverPath: string;
-  /** Attach to this existing MATLAB's web connector instead of launching MATLAB. */
-  attach?: ConnectorTarget & { pid?: number };
-  /** MATLAB installation folder (matlabroot), when the language server launches MATLAB itself. */
-  matlabInstallPath?: string;
-  /** Extra arguments for MATLAB (passed as --matlabLaunchCommandArgs). */
-  matlabArgs?: string;
-  /** Folder for the language server process (MATLAB itself is moved there with `cd` by the session). */
+  /** The existing MATLAB's web connector (from shareMATLABSession()). */
+  attach: ConnectorTarget & { pid?: number };
+  /** Folder for the language server process. */
   cwd?: string;
   /** Node executable. In the extension host this is VS Code itself (run as Node via ELECTRON_RUN_AS_NODE). */
   execPath?: string;
@@ -37,6 +33,8 @@ export interface LsBackendOptions {
   env?: Record<string, string>;
   /** How long to wait for MATLAB to accept commands. */
   startTimeoutMs?: number;
+  /** How long the engine may take to answer once the connector connection is up (default 10 s). */
+  engineTimeoutMs?: number;
   /** Called with every message sent ('->') and received ('<-') (the spike records them). */
   trace?: (direction: '->' | '<-', message: unknown) => void;
 }
@@ -59,8 +57,8 @@ export class LsBackend extends EventEmitter implements MatlabBackend {
   private exited = false;
   /** Set while starting: a 'disconnected' status then means the connection failed. */
   private onDisconnected: (() => void) | undefined;
-  /** Set while starting: the loader could not apply its fix (unsupported MATLAB extension version). */
-  private onPatchMissing: (() => void) | undefined;
+  /** The loader did not find the code it fixes (another MATLAB extension version, possibly already fixed). */
+  private patchMissing = false;
   /** Set while starting: the connector connection is up; now the engine (MVM) must answer. */
   private onConnectorUp: (() => void) | undefined;
   private release: string | null = null;
@@ -75,22 +73,16 @@ export class LsBackend extends EventEmitter implements MatlabBackend {
   private log(m: string): void { this.emit('log', m); }
 
   async start(): Promise<StartInfo> {
-    let matlabUrl: string | undefined;
-    if (this.opts.attach) {
-      this.proxy = await startConnectorProxy(this.opts.attach, m => this.log(m));
-      matlabUrl = this.proxy.url;
-      this.releaseHint = await matlabReleaseOfProcess(this.opts.attach.pid ?? 0);
-      this.log(`shared MATLAB release: ${this.releaseHint ?? `unknown (assuming ${FALLBACK_RELEASE} or newer)`}`);
-    }
+    this.proxy = await startConnectorProxy(this.opts.attach, m => this.log(m));
+    this.releaseHint = await matlabReleaseOfProcess(this.opts.attach.pid ?? 0);
+    this.log(`shared MATLAB release: ${this.releaseHint ?? `unknown (assuming ${FALLBACK_RELEASE} or newer)`}`);
     try {
-      const info = await this.launch(matlabUrl);
-      if (this.opts.attach) {
-        // The language server only knows the release we told it (lsLoader.ts); ask MATLAB for the real one.
-        const v = await this.feval('version', 1, []).catch(() => undefined);
-        const m = /\((R\d{4}\w)\)/.exec(String(v?.[0] ?? ''));
-        this.release = m ? m[1] : null;
-        info.release = this.release;
-      }
+      const info = await this.launch(this.proxy.url);
+      // The language server only knows the release we told it (lsLoader.ts); ask MATLAB for the real one.
+      const v = await this.feval('version', 1, []).catch(() => undefined);
+      const m = /\((R\d{4}\w)\)/.exec(String(v?.[0] ?? ''));
+      this.release = m ? m[1] : null;
+      info.release = this.release;
       return info;
     } catch (e) {
       void this.proxy?.close();
@@ -98,25 +90,24 @@ export class LsBackend extends EventEmitter implements MatlabBackend {
     }
   }
 
-  private launch(matlabUrl: string | undefined): Promise<StartInfo> {
-    const args = ['--node-ipc', '--matlabConnectionTiming=onDemand', '--indexWorkspace=false'];
-    if (matlabUrl) { args.push(`--matlabUrl=${matlabUrl}`); }
-    if (this.opts.matlabInstallPath) { args.push(`--matlabInstallPath=${this.opts.matlabInstallPath}`); }
-    if (this.opts.matlabArgs) { args.push(`--matlabLaunchCommandArgs=${this.opts.matlabArgs}`); }
+  private launch(matlabUrl: string): Promise<StartInfo> {
+    const args = ['--node-ipc', '--matlabConnectionTiming=onDemand', '--indexWorkspace=false', `--matlabUrl=${matlabUrl}`];
     this.log(`starting language server: ${this.opts.serverPath} ${args.map(a => a.replace(/matlabUrl=.*$/, 'matlabUrl=<relay>')).join(' ')}`);
     const env: NodeJS.ProcessEnv = { ...process.env, ...this.opts.env, ELECTRON_RUN_AS_NODE: '1' };
     const execPath = this.opts.execPath ?? process.execPath;
     const stdio: ('ignore' | 'pipe' | 'ipc')[] = ['ignore', 'pipe', 'pipe', 'ipc'];
-    // Attach mode needs the loader's fix for --matlabUrl (lsLoader.ts); local mode runs the server as is.
-    const child = matlabUrl
-      ? spawn(execPath, ['-e', LOADER_SOURCE, this.opts.serverPath, ...args],
-        { cwd: this.opts.cwd, env: { ...env, MCW_MATLAB_RELEASE: this.releaseHint ?? FALLBACK_RELEASE }, stdio, windowsHide: true })
-      : fork(this.opts.serverPath, args, { cwd: this.opts.cwd, execPath, execArgv: [], env, stdio });
+    // Run through the loader, which fixes --matlabUrl mode in memory (lsLoader.ts).
+    const child = spawn(execPath, ['-e', LOADER_SOURCE, this.opts.serverPath, ...args],
+      { cwd: this.opts.cwd, env: { ...env, MCW_MATLAB_RELEASE: this.releaseHint ?? FALLBACK_RELEASE }, stdio, windowsHide: true });
     this.child = child;
     child.stdout?.on('data', (b: Buffer) => this.log(`[ls] ${b.toString().trimEnd()}`));
     child.stderr?.on('data', (b: Buffer) => {
       const text = b.toString();
-      if (text.includes(PATCH_MISSING_MARKER)) { this.onPatchMissing?.(); }
+      if (text.includes(PATCH_MISSING_MARKER)) {
+        // Not fatal: a newer extension may have fixed the bug itself. If the engine then does not answer, say why.
+        this.patchMissing = true;
+        this.log('the loader did not find the code it fixes (other MATLAB extension version); trying without the fix');
+      }
       this.log(`[ls err] ${text.trimEnd()}`);
     });
 
@@ -176,21 +167,22 @@ export class LsBackend extends EventEmitter implements MatlabBackend {
         reject(new Error(reason));
       };
       let engineTimer: NodeJS.Timeout | undefined;
-      if (this.opts.attach) {
-        this.onPatchMissing = () => fail('This version of the MATLAB extension is not supported by the Command Window yet ' +
-          '(its language server changed). Please report it with the version number.');
-        // Seen with the bug the loader fixes: the connection comes up, the engine never does. Do not wait 2 minutes.
-        this.onConnectorUp = () => {
-          clearTimeout(engineTimer);
-          engineTimer = setTimeout(() => fail('Reached the shared MATLAB, but its engine did not answer within 10 s. ' +
-            'See View → Output → MATLAB Command Window.'), 10000);
-        };
-      }
-      const timeoutMs = this.opts.startTimeoutMs ?? 180000;
+      // Seen with the bug the loader fixes: the connection comes up, the engine never does. Do not wait for the
+      // overall timeout.
+      const engineMs = this.opts.engineTimeoutMs ?? 10000;
+      this.onConnectorUp = () => {
+        clearTimeout(engineTimer);
+        engineTimer = setTimeout(() => fail(this.patchMissing
+          ? 'This version of the MATLAB extension is not supported by the Command Window yet (its language server ' +
+            'changed). Please report it with the version number.'
+          : `Reached the shared MATLAB, but its engine did not answer within ${Math.round(engineMs / 1000)} s. ` +
+            'See View → Output → MATLAB Command Window.'), engineMs);
+      };
+      const timeoutMs = this.opts.startTimeoutMs ?? 20000;
       const timer = setTimeout(() => fail(`MATLAB did not become ready within ${Math.round(timeoutMs / 1000)} s.`), timeoutMs);
       // [code] RemoteMatlabSession reports DISCONNECTED when the connection fails or MATLAB goes away.
       this.onDisconnected = () => {
-        if (!settled) { fail(this.opts.attach ? 'Could not connect to the shared MATLAB.' : 'MATLAB disconnected during startup.'); }
+        if (!settled) { fail('Could not connect to the shared MATLAB.'); }
         else { this.lost('MATLAB disconnected'); }
       };
       peer.onNotification('mvmStateChange', (d: { state: string; release?: string | null }) => {
@@ -202,17 +194,12 @@ export class LsBackend extends EventEmitter implements MatlabBackend {
           if (!settled) { fail('MATLAB disconnected during startup.'); } else { this.lost('MATLAB disconnected'); }
         }
       });
-      peer.onNotification('matlab/launchfailed', (d: unknown) => {
-        const msg = `MATLAB could not be launched: ${typeof d === 'string' ? d : JSON.stringify(d)}`;
-        if (!settled) { fail(msg); } else { this.lost(msg); }
-      });
-      peer.onNotification('feature/needsmatlab/nomatlab', () => fail('The language server did not find MATLAB. Set matlabCommandWindow.matlabInstallPath.'));
       child.on('error', e => { fail(`language server could not start: ${e.message}`); this.lost(e.message); });
       child.on('exit', code => { fail(`language server exited (code ${code}) before MATLAB was ready.`); this.lost(`language server exited (code ${code})`); });
 
       void peer.request('initialize', {
         processId: process.pid,
-        clientInfo: { name: 'matlab-command-window-community' },
+        clientInfo: { name: 'matlab-command-window' },
         rootUri: null,
         capabilities: {},
       }, 60000).then(() => {
@@ -260,11 +247,11 @@ export class LsBackend extends EventEmitter implements MatlabBackend {
   dispose(): void {
     const child = this.child;
     if (!child || this.exited) { return; }
-    // A polite LSP shutdown makes the language server quit MATLAB; kill both if that does not happen soon.
-    // In attach mode the language server only disconnects (RemoteMatlabSession.shutdown closes the connection).
+    // [code] In --matlabUrl mode a polite LSP shutdown only disconnects (RemoteMatlabSession.shutdown closes the
+    // connection); MATLAB keeps running. Kill the server if it does not exit soon.
     void this.peer?.request('shutdown', null, 3000).then(() => this.peer?.notify('exit'), () => undefined);
     const proxy = this.proxy;
-    setTimeout(() => { if (child.exitCode === null) { child.kill(); } void proxy?.close(); }, this.opts.attach ? 1500 : 5000);
+    setTimeout(() => { if (child.exitCode === null) { child.kill(); } void proxy?.close(); }, 1500);
     this.lost('disposed');
   }
 

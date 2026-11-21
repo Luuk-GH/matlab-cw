@@ -1,4 +1,4 @@
-# MATLAB Command Window (community)
+# MATLAB Command Window
 
 A better Command Window for the official MATLAB extension for VS Code: HTML output with clickable error links,
 collapsible output, a completion pop-up, help tooltips and a Stop button. It **attaches to the MATLAB the official
@@ -32,7 +32,9 @@ The *MATLAB CW* tab in the bottom panel:
   that window, because MATLAB sends a command's output only to the window that started it.
 - **Run from the editor into the Command Window:** in a `.m` file **F5** runs the file, **Ctrl+Enter** the current
   `%%` section, **Shift+Enter** the selection (also in the editor's Run menu and context menu). The editor keeps the
-  focus; a file shows as its name (`>> myscript`). Turn off `matlabCommandWindow.runInCommandWindow` to give these keys back to the MATLAB extension.
+  focus; a file shows as its name (`>> myscript`). When code stops at a breakpoint, the Command Window (`K>>`) stays
+  in front instead of the MATLAB terminal. Turn off `matlabCommandWindow.runInCommandWindow` to give all of this back
+  to the MATLAB extension.
 
 Everything else (debugger, Workspace, tests, linting, AI agents) stays with MathWorks' tools.
 
@@ -41,7 +43,7 @@ Everything else (debugger, Workspace, tests, linting, AI agents) stays with Math
 1. Install the official **MATLAB** extension and MathWorks' **MATLAB Agentic Toolkit** (it installs the
    *MATLAB MCP Server Toolbox*, which provides `shareMATLABSession`; R2023a or newer). Without the toolkit:
    `matlab-mcp-server --setup-matlab`.
-2. Install this extension: Extensions view → **⋯ → Install from VSIX…** → `matlab-command-window-community-<version>.vsix`.
+2. Install this extension: Extensions view → **⋯ → Install from VSIX…** → `matlab-command-window-<version>.vsix`.
 3. Open a `.m` file so the MATLAB extension starts MATLAB. In its **MATLAB terminal**, run once per MATLAB session:
 
    ```matlab
@@ -98,13 +100,15 @@ quits MATLAB. Nothing is added to your MATLAB path. Details: `RESEARCH.md`.
 ```
 npm install
 npm run compile            # type-check and bundle
-npm run package            # build matlab-command-window-community-<version>.vsix
+npm run package            # build matlab-command-window-<version>.vsix
 npm run test:unit          # pure logic, session file, connector relay
 npm run test:fake          # session core + backend against the fake language server and fake connector
 npm run test:integration   # end to end in a separate VS Code instance, against the fakes
 npm run test:vsix          # the same, from the packaged .vsix in a fresh profile
 npm run test:real          # the integration tests against the real MATLAB shared with shareMATLABSession()
 npm run demo:screenshots   # screenshots of the Command Window on the real MATLAB -> docs/screenshots/
+npm run demo:video         # records the demo; then node scripts/video/server.mjs and open http://localhost:8765/
+                           # in a browser; it writes %TEMP%/mcw-demo-video/out/mcw-demo.mp4 (scripts/video/compose.html)
 npm run spike:build        # rebuild spike/matlab-spike.js (see spike/README.md)
 ```
 

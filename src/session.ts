@@ -37,21 +37,13 @@ export class SessionManager implements vscode.Disposable {
   private inputPrompt = '';
   private lastSeenMtime = 0;
   private helpCache = new Map<string, Promise<HelpInfo | undefined>>();
-  private readonly promptEmitter = new vscode.EventEmitter<{ kind: 'ready' | 'debug'; hidden: boolean }>();
-  private readonly outputEmitter = new vscode.EventEmitter<{ text: string; stream: 'out' | 'err' }>();
-  private readonly exitEmitter = new vscode.EventEmitter<void>();
-  private readonly stateEmitter = new vscode.EventEmitter<SessionState>();
-  readonly onDidPrompt = this.promptEmitter.event;
-  readonly onDidOutput = this.outputEmitter.event;
-  readonly onDidExit = this.exitEmitter.event;
-  readonly onDidChangeState = this.stateEmitter.event;
 
   constructor(private readonly log: vscode.LogOutputChannel) {
     this.status = vscode.window.createStatusBarItem('matlabCommandWindow.connection', vscode.StatusBarAlignment.Left, 49);
     this.status.name = 'MATLAB Command Window';
     this.updateStatus('disconnected');
     this.status.show();
-    this.disposables.push(this.status, this.promptEmitter, this.outputEmitter, this.exitEmitter, this.stateEmitter,
+    this.disposables.push(this.status,
       vscode.workspace.onDidSaveTextDocument(d => { if (/\.m$/i.test(d.fileName)) { this.helpCache.clear(); } }));
     this.watchSessionFile();
   }
@@ -276,7 +268,6 @@ export class SessionManager implements vscode.Disposable {
     s.on('output', (text, stream) => {
       if (this.session !== s || !text) { return; }
       this.forViews(v => v.writeOutput(text, stream));
-      this.outputEmitter.fire({ text, stream });
     });
     s.on('clear', () => { if (this.session === s) { this.forViews(v => v.clearScreen()); } });
     s.on('input', (source: InputSource, prompt: string) => {
@@ -291,17 +282,14 @@ export class SessionManager implements vscode.Disposable {
       this.forViews(v => v.info(`MATLAB is waiting for ${what} from a command started outside this window, e.g. in the MATLAB terminal. Answer it there: its output goes to that window.`));
     });
     s.on('state', st => this.onState(s, st));
-    s.on('prompt', (kind, hidden) => {
-      if (this.session !== s) { return; }
-      if (s.queuedCount === 0) { this.forViews(v => v.showPrompt(kind)); }
-      this.promptEmitter.fire({ kind, hidden });
+    s.on('prompt', kind => {
+      if (this.session === s && s.queuedCount === 0) { this.forViews(v => v.showPrompt(kind)); }
     });
     s.on('exit', reason => {
       if (this.session !== s) { return; }
       this.session = undefined;
       this.connected = undefined;
       this.helpCache.clear();
-      this.exitEmitter.fire();
       this.forViews(v => v.resetInput());
       this.forViews(v => v.info(`Connection to MATLAB ended (${reason}). It reconnects when MATLAB is shared again, or type a command to retry.`));
       this.updateStatus('disconnected');
@@ -353,7 +341,6 @@ export class SessionManager implements vscode.Disposable {
   private onState(s: MatlabSession, st: SessionState): void {
     if (this.session !== s) { return; }
     if (st !== 'starting') { this.updateStatus(st); }
-    this.stateEmitter.fire(st);
     void vscode.commands.executeCommand('setContext', 'matlabCommandWindow.busy', st === 'busy' || st === 'input' || st === 'pause');
     if (st === 'busy') { this.forViews(v => v.setBusy()); }
     // [verified, R2026b] A command started elsewhere (the MATLAB terminal) ends with no 'prompt' event of ours:
@@ -367,7 +354,7 @@ export class SessionManager implements vscode.Disposable {
     const s = this.session;
     this.session = undefined;
     this.connected = undefined;
-    if (s && s.state !== 'exited') { this.exitEmitter.fire(); this.forViews(v => v.resetInput()); }
+    if (s && s.state !== 'exited') { this.forViews(v => v.resetInput()); }
     s?.dispose();
     this.helpCache.clear();
     this.updateStatus('disconnected');

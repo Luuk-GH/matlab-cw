@@ -67,15 +67,28 @@ async function main(): Promise<void> {
   const none = new MatlabSession(new LsBackend({ serverPath: fake, execPath: process.execPath, attach: { ...target, port: conn2.port }, startTimeoutMs: 10000 }));
   await assert.rejects(none.start(), /Could not connect to the shared MATLAB/);
 
-  // A language server whose code the loader cannot patch (another extension version): fail fast, clearly.
+  // A language server whose code the loader cannot patch (another extension version) and that still has the bug:
+  // a clear failure once the engine does not answer.
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mcw-unpatchable-'));
   const unpatchable = path.join(tmp, 'index.js');
-  fs.writeFileSync(unpatchable, fs.readFileSync(fake, 'utf8').replace(/class RemoteMatlabSession extends/, 'class RemoteSession extends')
-    .replace('new RemoteMatlabSession()', 'new RemoteSession()'));
+  const renamed = fs.readFileSync(fake, 'utf8').replace(/class RemoteMatlabSession extends/, 'class RemoteSession extends')
+    .replace('new RemoteMatlabSession()', 'new RemoteSession()');
+  fs.writeFileSync(unpatchable, renamed);
+  const conn4 = await fakeConnector.start({ apiKey: 'k1' });
+  const target4 = { ...target, port: conn4.port, certificate: conn4.certificate };
   const t0 = Date.now();
-  const old = new MatlabSession(new LsBackend({ serverPath: unpatchable, execPath: process.execPath, attach: target, startTimeoutMs: 10000 }));
+  const old = new MatlabSession(new LsBackend({ serverPath: unpatchable, execPath: process.execPath, attach: target4, startTimeoutMs: 10000, engineTimeoutMs: 1000 }));
   await assert.rejects(old.start(), /version of the MATLAB extension is not supported/);
   assert.ok(Date.now() - t0 < 5000, 'unsupported server detected quickly');
+  // A future extension version that fixed the bug itself (the code to patch is gone): it still connects.
+  const fixedServer = path.join(tmp, 'fixed.js');
+  fs.writeFileSync(fixedServer, renamed.replace(/(initialize\(matlabConnection\) \{)/, "$1 this.matlabRelease = 'R2099z';"));
+  const fixed = new MatlabSession(new LsBackend({ serverPath: fixedServer, execPath: process.execPath, attach: target4, startTimeoutMs: 10000 }));
+  await fixed.start();
+  assert.strictEqual(await fixed.sendLine('x = 1'), 'ready', 'an already fixed language server works without the patch');
+  fixed.dispose();
+  await sleep(300);
+  await conn4.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 
   console.log('attach (fake connector): all assertions passed');

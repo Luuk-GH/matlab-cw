@@ -18,6 +18,13 @@
   `matlabCommandWindow.runInCommandWindow`).
 - An `input()`/`pause` started from another window (the MATLAB terminal) no longer takes over the Command Window's
   input line: MATLAB sends those prompts to every window but the output only to the one that started the command.
+- Extension icon (a surface plot with a small LP record) and name without "(community)": the extension id is now
+  `matlab-command-window` (uninstall the old `matlab-command-window-community`; its command history is not carried over).
+- At a breakpoint the Command Window stays in front: the MATLAB extension shows its MATLAB terminal when its
+  debugger starts; the Command Window takes the panel back (`matlabCommandWindow.runInCommandWindow`).
+- More robust with other setups: the release is also read from `VersionInfo.xml` when the MATLAB folder's name does
+  not contain it; a MATLAB extension version where the in-memory fix does not apply is tried anyway (it may have
+  fixed the bug) instead of being refused. Simpler backend: attach mode only (the unused local-launch mode is gone).
 - Signature help like the editor's parameter hints: MATLAB's own function forms with the current argument, its
   purpose and allowed values (from `matlabls.internal.getCompletions` of the MATLAB extension); Alt+Up/Down for
   other forms. Run File shows the script name instead of `run('<full path>')`.

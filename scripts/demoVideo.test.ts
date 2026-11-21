@@ -1,0 +1,158 @@
+// Demo video: drives the Command Window against the real shared MATLAB at a human pace while
+// scripts/run-demo-video.mjs records the window. Writes timeline.json (scene captions with timestamps) for the
+// composer (scripts/video/compose.html). Run: npm run demo:video
+import * as fs from 'fs';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import type { CommandWindowApi } from '../src/extension';
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+async function waitFor<T>(fn: () => Promise<T | undefined | false> | T | undefined | false, ms = 15000): Promise<T | undefined> {
+  const end = Date.now() + ms;
+  for (;;) {
+    const v = await fn();
+    if (v) { return v; }
+    if (Date.now() > end) { return undefined; }
+    await sleep(100);
+  }
+}
+interface Snap { text: string; mode: string; completions: string[]; signature: string; tooltip: string; links: { func?: string; line?: number }[] }
+
+export async function run(): Promise<void> {
+  const out = process.env.MCW_DEMO_DIR!;
+  const timeline: { t: number; caption: string }[] = [];
+  const log: string[] = [];
+  const ext = vscode.extensions.all.find(e => e.packageJSON?.name === 'matlab-command-window')!;
+  const api = (await ext.activate()) as CommandWindowApi;
+  const cw = api.commandWindow;
+  const ws = vscode.workspace.workspaceFolders![0].uri.fsPath;
+  const mq = (p: string) => p.replace(/'/g, "''");
+  // Undefined while the webview (re)loads, e.g. right after the panel is maximized.
+  const empty: Snap = { text: '', mode: '', completions: [], signature: '', tooltip: '', links: [] };
+  const snap = async () => ((await cw.test({ kind: 'snapshot' })) as Snap | undefined) ?? empty;
+  const idle = () => waitFor(async () => ['ready', 'debug'].includes((await snap()).mode), 20000);
+  const typeSlow = async (text: string) => {
+    for (const ch of text) { await cw.test({ kind: 'type', text: ch }); await sleep(ch === ' ' ? 70 : 45); }
+  };
+  // Enter with the completion pop-up open accepts the completion: close the pop-up first (Esc closes only it).
+  const enter = async () => {
+    if ((await snap()).completions.length) { await cw.test({ kind: 'key', key: 'Escape' }); await sleep(150); }
+    await cw.test({ kind: 'key', key: 'Enter' });
+  };
+  const command = async (text: string, pause = 900) => { await typeSlow(text); await sleep(250); await enter(); await idle(); await sleep(pause); };
+  const esc = async (n = 3) => { for (let i = 0; i < n; i++) { await cw.test({ kind: 'key', key: 'Escape' }); } };
+  const scene = (caption: string) => { timeline.push({ t: Date.now(), caption }); log.push(caption); };
+  let maximized = false;   // the panel starts at its normal size
+  const panelMax = async (on: boolean) => {
+    if (maximized !== on) { await vscode.commands.executeCommand('workbench.action.toggleMaximizedPanel'); maximized = on; }
+    await sleep(300);
+  };
+  let startFolder: string | undefined;
+  try {
+    // Set up off camera.
+    await vscode.commands.executeCommand('workbench.action.closeSidebar');
+    await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar').then(undefined, () => undefined);
+    const demoDoc = await vscode.workspace.openTextDocument(path.join(ws, 'signal_demo.m'));
+    await vscode.window.showTextDocument(demoDoc);
+    await vscode.commands.executeCommand('matlabCommandWindow.show');
+    await waitFor(() => api.session.state === 'idle', 30000);
+    startFolder = await waitFor(() => api.session.queryText('pwd'), 20000);
+    await api.session.execute(`cd('${mq(ws)}'); clear A results x t peakValue thr n`);
+    await cw.test({ kind: 'snapshot' });
+    await vscode.commands.executeCommand('matlabCommandWindow.commandWindow.clear').then(undefined, () => undefined);
+    await panelMax(true);
+    await vscode.commands.executeCommand('notifications.clearAll');
+    await idle();
+    await sleep(800);
+    fs.writeFileSync(path.join(out, 'start.txt'), String(Date.now()));   // the recorder starts now
+    await sleep(1500);
+
+    scene('A real Command Window, attached to the MATLAB the MATLAB extension runs');
+    await command('A = magic(4)');
+    await command('total = sum(A(:))', 1200);
+
+    scene('Errors in red, with links straight to the code');
+    await command('scale_to_sum([1 2 3])', 1200);
+    const s = await snap();
+    const linkIdx = s.links.findIndex(l => l.func === 'scale_to_sum' && l.line === 4);
+    await panelMax(false);
+    if (linkIdx >= 0) { await cw.test({ kind: 'clickLink', index: linkIdx }); }
+    await sleep(2200);
+
+    scene('Completion from MATLAB itself');
+    await vscode.commands.executeCommand('matlabCommandWindow.show');
+    await panelMax(true);
+    await command("results = struct('alpha', 1, 'beta', 2, 'gamma', 3);", 500);
+    await typeSlow('results.');
+    await cw.test({ kind: 'key', key: 'Ctrl-Space' });
+    await waitFor(async () => (await snap()).completions.includes('alpha'), 8000);
+    await sleep(2200);
+    await esc(3);
+
+    scene('Signature help, like in the editor');
+    await typeSlow('linspace(0, ');
+    await waitFor(async () => /linspace\(/.test((await snap()).signature), 8000);
+    await sleep(2500);
+    await esc(3);
+    await typeSlow('plot(');
+    await waitFor(async () => /plot\(/.test((await snap()).signature), 8000);
+    await sleep(1400);
+    await cw.test({ kind: 'key', key: 'Alt-ArrowDown' });
+    await sleep(1600);
+    await esc(3);
+
+    scene('F5 runs the file in the Command Window; input() is answered right there');
+    await panelMax(false);
+    const ed = await vscode.window.showTextDocument(demoDoc);
+    ed.selection = new vscode.Selection(0, 0, 0, 0);
+    await sleep(900);
+    void vscode.commands.executeCommand('matlabCommandWindow.runFile');
+    await waitFor(async () => (await snap()).mode === 'input', 15000);
+    await sleep(900);
+    await typeSlow('0.8');
+    await sleep(400);
+    await enter();
+    await idle();
+    await sleep(1800);
+
+    scene('Ctrl+Enter runs the current section');
+    await vscode.window.showTextDocument(demoDoc);
+    ed.selection = new vscode.Selection(5, 0, 5, 0);
+    ed.revealRange(new vscode.Range(4, 0, 6, 0));
+    await sleep(1000);
+    await vscode.commands.executeCommand('matlabCommandWindow.runSection');
+    await idle();
+    await sleep(2000);
+
+    scene('Breakpoints stop at K>>, right in the Command Window');
+    await vscode.commands.executeCommand('matlabCommandWindow.show');
+    await panelMax(true);
+    await command('dbstop in scale_to_sum at 4', 300);
+    await typeSlow('scale_to_sum([2 3 5])');
+    await enter();
+    await waitFor(async () => (await snap()).mode === 'debug', 15000);
+    await sleep(900);
+    await command('total', 900);
+    await command('dbquit', 300);
+    await api.session.execute('dbclear in scale_to_sum');
+    await sleep(600);
+
+    scene('Long runs: output streams in, Stop interrupts');
+    await typeSlow('count_forever');
+    await enter();
+    await waitFor(async () => (await snap()).mode === 'busy', 8000);
+    await sleep(3200);
+    await cw.test({ kind: 'clickStop' });
+    await idle();
+    await sleep(1800);
+    scene('end');
+  } catch (e) {
+    log.push(`error: ${(e as Error).stack ?? e}`);
+  } finally {
+    fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(timeline, null, 1));
+    // Leave the user's MATLAB as found.
+    await Promise.race([api.session.execute("if ~isempty(dbstack), dbquit('all'); end"), sleep(5000)]);
+    await Promise.race([api.session.execute(`dbclear in scale_to_sum; cd('${mq(startFolder ?? '.')}'); clear A total results x t peakValue thr n ans`), sleep(10000)]);
+    fs.writeFileSync(path.join(out, 'done.txt'), log.join('\n'));
+  }
+}

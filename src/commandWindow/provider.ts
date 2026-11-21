@@ -238,7 +238,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${css}">
-<title>MATLAB Command Window (community)</title>
+<title>MATLAB Command Window</title>
 </head>
 <body data-test-hooks="${testHooks}" data-nonce="${nonce}">
 <div id="output" role="log" aria-live="polite" tabindex="-1"></div>

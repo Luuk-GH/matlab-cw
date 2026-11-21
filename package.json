@@ -1,6 +1,7 @@
 {
-  "name": "matlab-command-window-community",
-  "displayName": "MATLAB Command Window (community)",
+  "name": "matlab-command-window",
+  "displayName": "MATLAB Command Window",
+  "icon": "media/icon.png",
   "description": "A better Command Window for the official MATLAB extension: HTML output with clickable error links, collapsible output, completion pop-up, help tooltips and Stop, attached to the MATLAB the official extension already runs (no second MATLAB). Not affiliated with or endorsed by MathWorks.",
   "version": "0.1.0",
   "publisher": "local",
@@ -126,7 +127,7 @@
       ]
     },
     "configuration": {
-      "title": "MATLAB Command Window (community)",
+      "title": "MATLAB Command Window",
       "properties": {
         "matlabCommandWindow.autoConnect": {
           "type": "boolean",
@@ -142,7 +143,7 @@
         "matlabCommandWindow.runInCommandWindow": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Run MATLAB files in this Command Window: **F5** runs the file, **Ctrl+Enter** the current `%%` section, **Shift+Enter** the selection, instead of the MATLAB extension's terminal. The editor keeps the focus. Turn off to give these keys back to the MATLAB extension."
+          "markdownDescription": "Run MATLAB files in this Command Window: **F5** runs the file, **Ctrl+Enter** the current `%%` section, **Shift+Enter** the selection, instead of the MATLAB extension's terminal. The editor keeps the focus. When MATLAB stops at a breakpoint, the Command Window (K>>) stays in front instead of the MATLAB terminal. Turn off to give these keys back to the MATLAB extension."
         }
       }
     },
@@ -198,6 +199,7 @@
     "spike:build": "esbuild spike/spike.ts --bundle --platform=node --target=node18 --outfile=spike/matlab-spike.js --log-level=warning",
     "test:vsix": "npm run package && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-vsix-test.mjs",
     "test:real": "node esbuild.mjs && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-integration.mjs --real",
+    "demo:video": "node esbuild.mjs && esbuild scripts/demoVideo.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/demoVideo.test.js --log-level=warning && node scripts/run-demo-video.mjs",
     "demo:screenshots": "node esbuild.mjs && esbuild scripts/demo.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/demo.test.js --log-level=warning && node scripts/run-demo.mjs"
   },
   "devDependencies": {

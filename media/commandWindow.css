@@ -1,4 +1,4 @@
-/* MATLAB Command Window (community) webview. Colours come from the VS Code theme (terminal and editor colours). */
+/* MATLAB Command Window webview. Colours come from the VS Code theme (terminal and editor colours). */
 :root {
   --cw-line-height: 1.45;
   --cw-fg: var(--vscode-terminal-foreground, var(--vscode-editor-foreground));

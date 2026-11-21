@@ -10,7 +10,7 @@ assert.strictEqual(inputPromptText(undefined), '');
 import { linkTarget, parseAnchors } from '../src/commandWindow/webview/anchors';
 import { fileFromWhich, functionDeclaration, parseHelp } from '../src/language/helpText';
 import { callContext, completionPrefix } from '../src/language/matlabSyntax';
-import { isErrorText, matlabString, textOf } from '../src/sessionText';
+import { matlabString, textOf } from '../src/sessionText';
 
 // ---- callContext / completionPrefix (MATLAB rules) ----
 assert.deepStrictEqual(callContext('zeros(3, '), { name: 'zeros', param: 1 });
@@ -85,9 +85,6 @@ assert.deepStrictEqual(completionItems([{ label: 'a' }]), [{ label: 'a', kind: '
 assert.strictEqual(completionItems({}), undefined);
 assert.strictEqual(textOf(['json']), 'json');
 assert.strictEqual(textOf({ value: 'v' }), 'v');
-assert.ok(isErrorText('agent boom\n'));
-assert.ok(!isErrorText('Warning: careful\n> In f (line 3)\n'));
-assert.ok(isErrorText('Warning: x\nError using f\n'));
 assert.strictEqual(matlabString("C:\\it's.m"), "'C:\\it''s.m'");
 
 console.log('parsing: all assertions passed');

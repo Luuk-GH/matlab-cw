@@ -12,8 +12,7 @@
 //   [guess] not documented anywhere we could read: must be checked by the spike (check IDs refer to spike/spike.ts)
 //
 // Environment knobs (tests use them to try both answers to open questions):
-//   MCW_FAKE_STARTUP_MS     delay before MATLAB is "ready" (default 300)
-//   MCW_FAKE_FAIL_START=1   report matlab/launchfailed instead of starting
+//   MCW_FAKE_STARTUP_MS     delay before attaching to the (fake) connector (default 0)
 //   MCW_FAKE_RESPONSE_FIRST=1  send evalResponse BEFORE the final idle prompt change (default: after)   [guess, S3]
 //   MCW_FAKE_FEVAL_PROMPTS=1   hidden fevals also emit BUSY/READY prompt changes (default: they don't)  [guess, S4]
 //   MCW_FAKE_ECHO_INPUT_PROMPT=1  input() also prints its prompt as output text (default: it doesn't)   [guess, S8]
@@ -23,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 
 const env = process.env;
-const STARTUP_MS = Number(env.MCW_FAKE_STARTUP_MS ?? 300);
+const STARTUP_MS = Number(env.MCW_FAKE_STARTUP_MS ?? 0);
 const RELEASE = 'R2099z';
 const logFile = env.MCW_FAKE_LOG;
 const trace = (dir, m) => { if (logFile) { try { fs.appendFileSync(logFile, `${dir} ${JSON.stringify(m)}\n`); } catch { /* ignore */ } } };
@@ -166,21 +165,8 @@ function attachMatlab() {
 
 function startMatlab() {
   if (connected) { return; }
-  if (matlabUrl) { return attachMatlab(); }
-  // [code] connection status notifications; [guess] payload shape (only logged by the backend).
-  notify('matlab/connection/update/server', { connectionStatus: 'connecting' });
-  if (env.MCW_FAKE_FAIL_START === '1') {
-    setTimeout(() => notify('matlab/launchfailed', 'fake: MATLAB executable not found'), 50);
-    return;
-  }
-  setTimeout(() => {
-    connected = true;
-    notify('matlab/connection/update/server', { connectionStatus: 'connected' });
-    // [code] mvmStateChange {state: 'connected', release} when the MVM is available.
-    notify('mvmStateChange', { state: 'connected', release: RELEASE });
-    setPrompt('READY');
-    log('MATLAB ready');
-  }, STARTUP_MS);
+  if (!matlabUrl) { log('the Command Window always attaches: --matlabUrl is required'); process.exit(2); }
+  setTimeout(attachMatlab, STARTUP_MS);
 }
 
 // ---------------------------------------------------------------------------------------------------------------

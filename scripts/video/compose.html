@@ -1,0 +1,180 @@
+<!doctype html>
+<!-- Turns the recorded frames (scripts/run-demo-video.mjs) into the demo MP4: a title card, the recording with a
+     caption per scene, and an end card. Each video frame is drawn on a canvas and encoded with WebCodecs (H.264), not
+     in real time, and written as a plain (non-fragmented, seekable) MP4 by the small muxer below.
+     Served by scripts/video/server.mjs; ?speed=1.15 plays the recording faster; ?preview=<seconds> only draws that
+     moment. The finished video is posted back to the server (out/mcw-demo.mp4). -->
+<html><head><meta charset="utf-8"><title>Compose demo video</title>
+<style>html,body{margin:0;background:#111;color:#ccc;font:14px system-ui}canvas{width:100%;display:block}#status{padding:6px 10px}</style>
+</head><body><div id="status">loading…</div><canvas id="c" width="1920" height="1080"></canvas>
+<script>
+const W = 1920, H = 1080, FPS = 30;
+const params = new URLSearchParams(location.search);
+const SPEED = Number(params.get('speed') || 1);
+const PREVIEW = params.get('preview');
+const TITLE_MS = 3600, END_MS = 5200, FADE_MS = 450;
+const c = document.getElementById('c'), g = c.getContext('2d');
+const status = t => { document.getElementById('status').textContent = t; window.__status = t; };
+const FONT = '"Segoe UI", system-ui, sans-serif';
+
+// ---------- drawing ----------
+function roundRect(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function bg() {
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, '#16324f'); gr.addColorStop(1, '#0a1828');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+}
+function titleCard(icon, a) {
+  bg();
+  g.globalAlpha = a;
+  g.drawImage(icon, W / 2 - 110, 250, 220, 220);
+  g.fillStyle = '#ffffff'; g.textAlign = 'center';
+  g.font = `600 76px ${FONT}`; g.fillText('MATLAB Command Window', W / 2, 590);
+  g.fillStyle = '#ffb35c'; g.font = `400 40px ${FONT}`; g.fillText('for Visual Studio Code', W / 2, 650);
+  g.fillStyle = '#c9d6e3'; g.font = `400 32px ${FONT}`;
+  g.fillText('A better Command Window for the MATLAB extension, attached to the MATLAB it already runs', W / 2, 740);
+  g.globalAlpha = 1;
+}
+function endCard(icon, a) {
+  bg();
+  g.globalAlpha = a;
+  g.drawImage(icon, W / 2 - 80, 120, 160, 160);
+  g.textAlign = 'center'; g.fillStyle = '#ffffff'; g.font = `600 60px ${FONT}`;
+  g.fillText('Get started', W / 2, 380);
+  const steps = [
+    '1.  Install MathWorks’ MATLAB extension and the MATLAB Agentic Toolkit',
+    '2.  Run  shareMATLABSession()  in MATLAB (e.g. from startup.m)',
+    '3.  Install the .vsix and open the MATLAB Command Window panel',
+  ];
+  g.textAlign = 'left'; g.fillStyle = '#dbe6f0'; g.font = `400 38px ${FONT}`;
+  steps.forEach((s, i) => g.fillText(s, 420, 480 + i * 72));
+  g.textAlign = 'center'; g.fillStyle = '#8fa3b8'; g.font = `400 26px ${FONT}`;
+  g.fillText('Not from MathWorks: not affiliated with or endorsed by MathWorks.', W / 2, 860);
+  g.fillText('MATLAB is a registered trademark of The MathWorks, Inc.', W / 2, 900);
+  g.globalAlpha = 1;
+}
+function caption(text, a) {
+  if (!text || a <= 0) { return; }
+  g.font = `600 36px ${FONT}`;
+  const w = g.measureText(text).width + 72, h = 70, x = (W - w) / 2, y = 22;
+  g.globalAlpha = a;
+  g.fillStyle = 'rgba(10, 24, 40, 0.92)'; roundRect(x, y, w, h, 35); g.fill();
+  g.strokeStyle = '#ff8c1a'; g.lineWidth = 3; roundRect(x, y, w, h, 35); g.stroke();
+  g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, W / 2, y + h / 2 + 1);
+  g.textBaseline = 'alphabetic'; g.globalAlpha = 1;
+}
+function drawFrame(img) {
+  g.fillStyle = '#0a1828'; g.fillRect(0, 0, W, H);
+  const s = Math.min(W / img.width, H / img.height);
+  const w = img.width * s, h = img.height * s;
+  g.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+}
+const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+
+// ---------- a minimal MP4 writer (one H.264 track, one sample per chunk) ----------
+function u32(n) { return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]; }
+function u16(n) { return [(n >>> 8) & 255, n & 255]; }
+function str(s) { return [...s].map(ch => ch.charCodeAt(0)); }
+function box(type, ...parts) {
+  const body = parts.map(p => p instanceof Uint8Array ? p : Uint8Array.from(p));
+  const size = 8 + body.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(size);
+  out.set([...u32(size), ...str(type)]);
+  let o = 8; for (const p of body) { out.set(p, o); o += p.length; }
+  return out;
+}
+const full = (version, flags) => [version, (flags >>> 16) & 255, (flags >>> 8) & 255, flags & 255];
+const MATRIX = [...u32(0x10000), ...u32(0), ...u32(0), ...u32(0), ...u32(0x10000), ...u32(0), ...u32(0), ...u32(0), ...u32(0x40000000)];
+function mp4(samples, avcC, timescale, delta) {
+  const n = samples.length, dur = n * delta, durMs = Math.round(dur * 1000 / timescale);
+  const ftyp = box('ftyp', str('isom'), u32(0x200), str('isom'), str('iso2'), str('avc1'), str('mp41'));
+  const dataSize = samples.reduce((s, x) => s + x.data.length, 0);
+  const offsets = []; let off = ftyp.length + 8;
+  for (const s of samples) { offsets.push(off); off += s.data.length; }
+  const mdat = new Uint8Array(8 + dataSize);
+  mdat.set([...u32(8 + dataSize), ...str('mdat')]);
+  let o = 8; for (const s of samples) { mdat.set(s.data, o); o += s.data.length; }
+  const keys = samples.map((s, i) => s.key ? i + 1 : 0).filter(Boolean);
+  const avc1 = box('avc1', new Array(6).fill(0), u16(1), u16(0), u16(0), new Array(12).fill(0), u16(W), u16(H),
+    u32(0x480000), u32(0x480000), u32(0), u16(1), new Array(32).fill(0), u16(0x18), u16(0xffff), box('avcC', avcC));
+  const stbl = box('stbl',
+    box('stsd', full(0, 0), u32(1), avc1),
+    box('stts', full(0, 0), u32(1), u32(n), u32(delta)),
+    box('stss', full(0, 0), u32(keys.length), keys.flatMap(u32)),
+    box('stsc', full(0, 0), u32(1), u32(1), u32(1), u32(1)),
+    box('stsz', full(0, 0), u32(0), u32(n), samples.flatMap(s => u32(s.data.length))),
+    box('stco', full(0, 0), u32(n), offsets.flatMap(u32)));
+  const minf = box('minf', box('vmhd', full(0, 1), u16(0), u16(0), u16(0), u16(0)),
+    box('dinf', box('dref', full(0, 0), u32(1), box('url ', full(0, 1)))), stbl);
+  const mdia = box('mdia', box('mdhd', full(0, 0), u32(0), u32(0), u32(timescale), u32(dur), u16(0x55c4), u16(0)),
+    box('hdlr', full(0, 0), u32(0), str('vide'), new Array(12).fill(0), str('VideoHandler'), [0]), minf);
+  const tkhd = box('tkhd', full(0, 3), u32(0), u32(0), u32(1), u32(0), u32(durMs), new Array(8).fill(0), u16(0), u16(0), u16(0), u16(0),
+    MATRIX, u32(W << 16), u32(H << 16));
+  const mvhd = box('mvhd', full(0, 0), u32(0), u32(0), u32(1000), u32(durMs), u32(0x10000), u16(0x100), new Array(10).fill(0),
+    MATRIX, new Array(24).fill(0), u32(2));
+  const moov = box('moov', mvhd, box('trak', tkhd, mdia));
+  return new Blob([ftyp, mdat, moov], { type: 'video/mp4' });
+}
+
+// ---------- composition ----------
+async function main() {
+  const files = await (await fetch('frames.json')).json();
+  const timeline = await (await fetch('timeline.json')).json();
+  const icon = await load('icon.png');
+  const times = files.map(f => Number(/f_(\d+)\.jpg/.exec(f)[1]));
+  const first = timeline[0]?.t ?? times[0];
+  const last = timeline.find(e => e.caption === 'end')?.t ?? times[times.length - 1];
+  const idx = times.map((t, i) => [t, i]).filter(([t]) => t >= first - 300 && t <= last).map(([, i]) => i);
+  const recMs = (last - first) / SPEED;
+  const total = TITLE_MS + recMs + END_MS;
+  const cache = new Map();
+  const frameAt = async wall => {
+    let k = 0; while (k + 1 < idx.length && times[idx[k + 1]] <= wall) { k++; }
+    for (const key of cache.keys()) { if (key < k - 1) { cache.delete(key); } }
+    for (let j = k; j < Math.min(idx.length, k + 12); j++) { if (!cache.has(j)) { cache.set(j, load('frames/' + files[idx[j]])); } }
+    return cache.get(k);
+  };
+  const draw = async t => {
+    if (t < TITLE_MS) { titleCard(icon, Math.min(1, t / FADE_MS, (TITLE_MS - t) / FADE_MS)); return; }
+    if (t >= TITLE_MS + recMs) { endCard(icon, Math.min(1, (t - TITLE_MS - recMs) / FADE_MS)); return; }
+    const wall = first + (t - TITLE_MS) * SPEED;
+    drawFrame(await frameAt(wall));
+    const ev = [...timeline].reverse().find(e => e.t <= wall && e.caption !== 'end');
+    if (ev) {
+      const next = timeline.find(e => e.t > ev.t);
+      const since = (wall - ev.t) / SPEED, until = next ? (next.t - wall) / SPEED : Infinity;
+      caption(ev.caption, Math.min(1, since / FADE_MS, until / FADE_MS));
+    }
+    const fade = Math.min(1, (t - TITLE_MS) / FADE_MS, (TITLE_MS + recMs - t) / FADE_MS);
+    if (fade < 1) { g.fillStyle = `rgba(10,24,40,${1 - Math.max(0, fade)})`; g.fillRect(0, 0, W, H); }
+  };
+  if (PREVIEW !== null) { await draw(Number(PREVIEW) * 1000); status(`preview at ${PREVIEW} s of ${(total / 1000).toFixed(1)} s`); return; }
+
+  const samples = []; let avcC;
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => {
+      if (meta?.decoderConfig?.description) { avcC = new Uint8Array(meta.decoderConfig.description); }
+      const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data);
+      samples.push({ data, key: chunk.type === 'key' });
+    },
+    error: e => status('encoder error: ' + e.message),
+  });
+  encoder.configure({ codec: 'avc1.640028', width: W, height: H, bitrate: 8_000_000, framerate: FPS, avc: { format: 'avc' } });
+  const n = Math.ceil(total / 1000 * FPS);
+  for (let i = 0; i < n; i++) {
+    await draw(i * 1000 / FPS);
+    const frame = new VideoFrame(c, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+    encoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
+    frame.close();
+    while (encoder.encodeQueueSize > 4) { await new Promise(r => setTimeout(r, 5)); }
+    if (i % 30 === 0) { status(`encoding ${i} / ${n} frames`); }
+  }
+  await encoder.flush();
+  const blob = mp4(samples, avcC, FPS * 1000, 1000);
+  status(`uploading ${(blob.size / 1e6).toFixed(1)} MB…`);
+  const r = await fetch('/upload?name=mcw-demo.mp4', { method: 'POST', body: blob });
+  status(`done: ${await r.text()} (${n} frames, ${(total / 1000).toFixed(1)} s)`);
+}
+main().catch(e => status('error: ' + (e.stack || e)));
+</script></body></html>

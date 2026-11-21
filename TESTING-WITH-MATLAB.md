@@ -9,7 +9,7 @@ first person with MATLAB. Work top to bottom. For every failure, note the step n
 
 Setup: Windows, MATLAB R2023a or newer, VS Code with the official MATLAB extension (`MathWorks.language-matlab`),
 MathWorks' MATLAB MCP Server Toolbox (via the MATLAB Agentic Toolkit), and
-`matlab-command-window-community-0.1.0.vsix` installed (Extensions view → ⋯ → *Install from VSIX…*). Copy the files
+`matlab-command-window-0.1.0.vsix` installed (Extensions view → ⋯ → *Install from VSIX…*). Copy the files
 from `test/workspace/` into a test folder and open it in VS Code.
 
 Code locations: session file `src/backend/sharedSession.ts`; relay `src/backend/connectorProxy.ts`; language server
@@ -126,14 +126,18 @@ Added 2026-11-21 (48 checks, 3 runs in a row): signature help (`linspace(0, ` �
 line, output stays before the next echo, Run File echoes the script name. The real-MATLAB tests run on a temporary
 copy of `test/workspace`, so breakpoints set on the project's files (seen: one in `long_loop.m`) do not stop them.
 
+Added 2026-11-21 (50 checks): the Command Window comes back in front when a MATLAB terminal is shown as the MATLAB
+extension does at a breakpoint (simulated: that extension is not loaded in the test window; the real breakpoint case
+is for the user's window). F5/Ctrl+Enter/Shift+Enter: read from VS Code's code (`_asCommandRule`, sort `Zun`):
+extension bindings weigh 400 + their index in the extension's list, and ties are broken by command id, so
+`matlabCommandWindow.runFile` (sorts after `matlab.runFile`) always wins over the MATLAB extension's binding.
+
 ## Still unverified
 
 1. The Command Window UI with real MATLAB: everything in sections 1–6.
 2. That the official MATLAB terminal keeps working normally while we are attached (1.5). Seen by the user: output of
    the terminal's commands goes only to the terminal, but `input()` prompts reach every window, and an answer typed in
    either window is accepted (now handled: 5b.5).
-3. Which F5/Ctrl+Enter/Shift+Enter binding wins against the MATLAB extension's own (5b.1); VS Code does not document
-   the order between two extensions' bindings for the same key.
 4. That the official extension's own features are undisturbed while we are attached (1.10).
 5. Warning markers (S11 events recorded, not yet checked in the UI: 2.3).
 6. Behaviour after MATLAB restarts, VS Code closes, or several MATLABs are shared (1.9, 6.1, 6.2).
