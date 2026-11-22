@@ -37,13 +37,16 @@ export class SessionManager implements vscode.Disposable {
   private inputPrompt = '';
   private lastSeenMtime = 0;
   private helpCache = new Map<string, Promise<HelpInfo | undefined>>();
+  private readonly inputEmitter = new vscode.EventEmitter<void>();
+  /** A command of ours asks for input() or waits in pause (keepInFront.ts answers the MATLAB terminal's reveal). */
+  readonly onDidRequestInput = this.inputEmitter.event;
 
   constructor(private readonly log: vscode.LogOutputChannel) {
     this.status = vscode.window.createStatusBarItem('matlabCommandWindow.connection', vscode.StatusBarAlignment.Left, 49);
     this.status.name = 'MATLAB Command Window';
     this.updateStatus('disconnected');
     this.status.show();
-    this.disposables.push(this.status,
+    this.disposables.push(this.status, this.inputEmitter,
       vscode.workspace.onDidSaveTextDocument(d => { if (/\.m$/i.test(d.fileName)) { this.helpCache.clear(); } }));
     this.watchSessionFile();
   }
@@ -275,6 +278,7 @@ export class SessionManager implements vscode.Disposable {
       this.inputPrompt = prompt;
       this.forViews(v => v.requestInput(source, prompt));
       this.webview?.reveal(true);
+      this.inputEmitter.fire();
     });
     s.on('foreignInput', (source: InputSource, prompt: string) => {
       if (this.session !== s) { return; }

@@ -132,6 +132,10 @@ is for the user's window). F5/Ctrl+Enter/Shift+Enter: read from VS Code's code (
 extension bindings weigh 400 + their index in the extension's list, and ties are broken by command id, so
 `matlabCommandWindow.runFile` (sorts after `matlab.runFile`) always wins over the MATLAB extension's binding.
 
+Added 2026-11-22 (52 checks, 2 runs): the Command Window comes back when a MATLAB terminal is shown 0.4 s after our
+command asks for input() (the MATLAB extension's terminal runs matlab.openCommandWindow on the INPUT state;
+simulated, since that extension is not loaded in the test window).
+
 ## Still unverified
 
 1. The Command Window UI with real MATLAB: everything in sections 1–6.

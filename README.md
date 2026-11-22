@@ -32,8 +32,8 @@ The *MATLAB CW* tab in the bottom panel:
   that window, because MATLAB sends a command's output only to the window that started it.
 - **Run from the editor into the Command Window:** in a `.m` file **F5** runs the file, **Ctrl+Enter** the current
   `%%` section, **Shift+Enter** the selection (also in the editor's Run menu and context menu). The editor keeps the
-  focus; a file shows as its name (`>> myscript`). When code stops at a breakpoint, the Command Window (`K>>`) stays
-  in front instead of the MATLAB terminal. Turn off `matlabCommandWindow.runInCommandWindow` to give all of this back
+  focus; a file shows as its name (`>> myscript`). When code stops at a breakpoint or asks for `input()`, the Command
+  Window stays in front instead of the MATLAB terminal. Turn off `matlabCommandWindow.runInCommandWindow` to give all of this back
   to the MATLAB extension.
 
 Everything else (debugger, Workspace, tests, linting, AI agents) stays with MathWorks' tools.

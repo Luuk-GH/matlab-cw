@@ -172,6 +172,19 @@ export async function run(): Promise<void> {
     await typeLine(`run('${mq(path.join(dir, 'ask_input.m'))}')`);
     s = await untilMode('input');
     check('input() switches the input line to answer mode', /Enter a number:/.test(s?.prompt ?? ''), s?.prompt);
+    // The MATLAB extension's terminal reacts to the same INPUT state with matlab.openCommandWindow, sometimes after us
+    // (CommandWindow.js; that extension is not loaded here, so do the same, late): the Command Window comes back.
+    {
+      await sleep(400);
+      const t = vscode.window.createTerminal({ name: 'MATLAB' });
+      t.show();
+      const hiddenByTerminal = await waitFor(() => !cw.isVisible(), 1000);
+      const backAgain = await waitFor(() => cw.isVisible(), 3000);
+      await sleep(1500);
+      check('input(): the MATLAB terminal took the panel', !!hiddenByTerminal);
+      check('input(): the Command Window comes back in front of it', !!backAgain && cw.isVisible());
+      t.dispose();
+    }
     await typeLine('7');
     s = await untilText(/You typed 7/);
     check('answer goes to input() and the run continues', !!s);

@@ -17,3 +17,5 @@ dist/**
 README.md
 docs/**
 media/icon.svg
+*.zip
+*.mp4

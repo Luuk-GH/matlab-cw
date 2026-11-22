@@ -20,6 +20,8 @@
   input line: MATLAB sends those prompts to every window but the output only to the one that started the command.
 - Extension icon (a surface plot with a small LP record) and name without "(community)": the extension id is now
   `matlab-command-window` (uninstall the old `matlab-command-window-community`; its command history is not carried over).
+- `input()` from a script run with F5 / Ctrl+Enter no longer jumps to the MATLAB terminal about half the time: the
+  MATLAB extension's terminal also reveals itself on the INPUT state; the Command Window now takes the panel back.
 - At a breakpoint the Command Window stays in front: the MATLAB extension shows its MATLAB terminal when its
   debugger starts; the Command Window takes the panel back (`matlabCommandWindow.runInCommandWindow`).
 - More robust with other setups: the release is also read from `VersionInfo.xml` when the MATLAB folder's name does
