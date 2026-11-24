@@ -18,8 +18,8 @@ export function loadMatFiles(session: SessionManager, uris: vscode.Uri[]): boole
 
 /**
  * A .mat file dragged from outside VS Code (Windows Explorer): the webview gets its name, size and date but not its
- * path. Look for that file (same name, size and modification time) in the workspace folders, MATLAB's current folder
- * and the user's Desktop, Downloads and Documents; its path when found.
+ * path. Look for that file (same name, size and modification time) in MATLAB's current folder and the workspace
+ * folders; its path when found.
  */
 export async function findDroppedFile(session: SessionManager, name: string, size: number, lastModified: number): Promise<string | undefined> {
   const base = path.basename(name);
@@ -30,16 +30,14 @@ export async function findDroppedFile(session: SessionManager, name: string, siz
       return st.isFile() && st.size === size && Math.abs(st.mtimeMs - lastModified) < 2000;
     } catch { return false; }
   };
-  const home = os.homedir();
+  // MATLAB's current folder: one stat.
   const pwd = (await session.queryText('pwd', [], true, 2000))?.trim();
-  const folders = [pwd, path.join(home, 'Desktop'), path.join(home, 'Downloads'), path.join(home, 'Documents'),
-    path.join(home, 'OneDrive', 'Desktop'), path.join(home, 'OneDrive', 'Documents')];
-  for (const dir of folders) {
-    if (dir && await same(path.join(dir, base))) { return path.join(dir, base); }
-  }
+  if (pwd && await same(path.join(pwd, base))) { return path.join(pwd, base); }
+  // The workspace: VS Code's file search (ripgrep listing names, as Quick Open does; files.exclude applies, .gitignore
+  // does not, as data files are often ignored), then one stat per file with that name.
   const glob = `**/${base.replace(/[[\]{}*?!]/g, '[$&]')}`;
   for (const f of vscode.workspace.workspaceFolders ?? []) {
-    const hits = await vscode.workspace.findFiles(new vscode.RelativePattern(f, glob), null, 200);
+    const hits = await vscode.workspace.findFiles(new vscode.RelativePattern(f, glob), undefined, 100);
     for (const h of hits) { if (await same(h.fsPath)) { return h.fsPath; } }
   }
   return undefined;

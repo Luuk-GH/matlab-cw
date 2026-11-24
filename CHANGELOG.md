@@ -7,9 +7,9 @@
   fields; no network and no second MATLAB.
 - The help tooltip in the Command Window has a Documentation link too. A click asks MATLAB which page its `doc` would
   open (e.g. `double.linspace.html` for linspace) and opens it in the browser. The signature box (shown while typing
-  a call) has the link as well, and its ⓘ opens the documentation.
+  a call): click its ⓘ.
 - A `.mat` file dropped from Windows Explorer is loaded from where it is (found by name, size and date in the
-  workspace, MATLAB's current folder, Desktop, Downloads or Documents) instead of from a temporary copy; a copy is
+  workspace or MATLAB's current folder) instead of from a temporary copy; a copy is
   only made when you choose *Load a Copy* because the file was not found.
 - Dragging from the VS Code Explorer onto the Command Window does not work, also not with Shift as 0.2.1 said
   (VS Code and Chromium keep drags inside VS Code out of webviews); use right-click → *Load into MATLAB Command Window*.

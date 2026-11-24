@@ -102,6 +102,7 @@ export interface Snapshot {
   tooltip: string;         // text of the open help tooltip / hint
   signature: string;       // text of the signature box ('' when closed)
   signatureActive: string; // the highlighted argument in the signature box
+  signatureDocLink: boolean; // its ⓘ opens the documentation
   stopVisible: boolean;
   queued: string[];        // commands shown as waiting
   historyPopup: string[];  // rows of the open Command History pop-up ("2x cmd" for repeats), [] when closed

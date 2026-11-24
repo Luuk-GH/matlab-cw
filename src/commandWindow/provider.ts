@@ -279,9 +279,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
     const found = await findDroppedFile(this.session, name, size, lastModified);
     if (found) { this.post({ type: 'forgetDrop', id }); loadMatFiles(this.session, [vscode.Uri.file(found)]); return; }
     const choice = await vscode.window.showInformationMessage(
-      `MATLAB Command Window: VS Code does not pass on where a file dragged from outside VS Code comes from, and no ${name} `
-      + 'with the same size and date is in your workspace, MATLAB\'s current folder, Desktop, Downloads or Documents. '
-      + 'Drag it from the VS Code Explorer (right-click → Load into MATLAB Command Window), or load a copy of it.', 'Load a Copy');
+      `${name} was not found in the workspace or MATLAB's current folder.`, 'Load a Copy');
     this.post(choice ? { type: 'sendDropBytes', id } : { type: 'forgetDrop', id });
   }
 

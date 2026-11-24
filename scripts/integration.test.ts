@@ -204,8 +204,8 @@ export async function run(): Promise<void> {
     check('signature box highlights the current argument', s?.signatureActive === 'x2', s?.signatureActive);
     check('signature box explains the argument', /Point interval/.test(s?.signature ?? '') && /pair of scalars/.test(s?.signature ?? ''), s?.signature);
     if (real) {
-      s = await waitFor(async () => { const x = await snap(); return /Documentation/.test(x.signature) ? x : undefined; }, 5000);
-      check('signature box links to the documentation', !!s, (await snap()).signature);
+      s = await waitFor(async () => { const x = await snap(); return x.signatureDocLink ? x : undefined; }, 5000);
+      check("the signature box's ⓘ opens the documentation (no extra link)", !!s && !/Documentation/.test(s.signature), (await snap()).signature);
     }
     // Esc closes an open completion list first (as in the editor), then the signature box, and only then clears the line.
     await cw.test({ kind: 'key', key: 'Escape' });

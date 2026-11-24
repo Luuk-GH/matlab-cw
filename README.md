@@ -39,8 +39,8 @@ The *MATLAB CW* tab in the bottom panel:
 - **Load a `.mat` file**: drop it on the Command Window from Windows Explorer, or right-click it in the VS Code
   Explorer → *Load into MATLAB Command Window*. Dragging from the VS Code Explorer onto the Command Window is not
   possible: VS Code and Chromium keep drags inside VS Code out of webviews. A dropped file arrives without its path,
-  so the Command Window looks for it (same name, size and date) in your workspace folders, MATLAB's current folder,
-  Desktop, Downloads and Documents and loads that file; if it is not there, it asks before loading a copy.
+  so the Command Window looks for it (same name, size and date) in MATLAB's current folder and your workspace folders
+  and loads that file; if it is not there, it asks before loading a copy.
   Other files are ignored.
 - **Signature help** like the editor's: while you type a call, a box shows MATLAB's own forms of the function
   (`plot(Y,LineSpec,options)  1 of 6`), the current argument in bold, and what it is (`y-coordinates`,

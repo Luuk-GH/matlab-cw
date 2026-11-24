@@ -902,15 +902,13 @@ function renderSignature(): void {
     if (p.valueSummary) { const d = document.createElement('div'); d.className = 'sig-values'; d.textContent = p.valueSummary; doc.append(d); }
     sigEl.append(doc);
   }
-  // The function's documentation: a link under the box, and the ⓘ opens it too (from its help, fetched once).
+  // The ⓘ opens the function's documentation (its address from the help, fetched once per name).
   const name = f.functionName;
   void fetchHelp(name).then(r => {
-    if (!r?.docUrl || sigEl.hidden || sigHelp?.forms[sigForm]?.functionName !== name || sigEl.querySelector('.sig-docurl')) { return; }
+    if (!r?.docUrl || !icon.isConnected) { return; }
     icon.classList.add('clickable');
-    icon.title = 'Documentation';
+    icon.title = `Documentation of ${name}`;
     icon.addEventListener('mousedown', e => { e.preventDefault(); openDocFor(r); });
-    sigEl.append(docLinkEl(r, 'link sig-docurl'));
-    placeSignature();
   });
   placeSignature();
 }
@@ -1094,6 +1092,7 @@ function snapshot(): Snapshot {
     tooltip: hintEl.textContent ?? '',
     signature: sigEl.hidden ? '' : sigEl.textContent ?? '',
     signatureActive: sigEl.hidden ? '' : sigEl.querySelector('.sig-label .active')?.textContent ?? '',
+    signatureDocLink: !sigEl.hidden && !!sigEl.querySelector('.sig-icon.clickable'),
     stopVisible: !stopEl.hidden,
     queued: [...queueEl.querySelectorAll('.queued .cmd-code')].map(e => e.textContent ?? ''),
     historyPopup: popRows.map(r => (r.count > 1 ? `${r.count}x ` : '') + r.text),
