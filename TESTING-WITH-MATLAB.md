@@ -144,10 +144,20 @@ Command Window, the cursor blinks (it was a 0.8 px black line, invisible on dark
 parent chain of the MATLAB extension's MATLAB on Windows: MATLAB.exe ← MATLAB.exe ← matlab.exe ← language server
 (Code.exe as node) ← extension host. MATLAB's file/folder choices recorded in `test/fixtures/pathCompletions-R2026b.json`.
 
+Added 2026-11-24, 0.2.1 (74 checks): Run Selection joins the Command History; Run Selection at K>> runs in the
+Command Window in the stopped workspace (`kbSel = kb + 41` → 42); Shift+Enter/Ctrl+Enter keybindings have no
+`!matlab.isDebugging` (F5 keeps it); a file dropped from outside VS Code (a File with only bytes, dispatched on the
+input line) never reaches the window-level listeners of VS Code's webview host and is not pasted by CodeMirror; its
+temporary copy is loaded (`disp(mcwDrop)` → 4242) and deleted; Explorer → Load into MATLAB Command Window.
+Why drops failed (read from VS Code's code, webview `pre/index.html` and `webviewElement`): VS Code sets
+`pointer-events: none` on webviews when a workbench drag starts and lifts it only while Shift is held; for drags from
+outside VS Code the host's own `dragenter`/`dragover` listeners on the webview's window block it unless the page
+handles the event first (`defaultPrevented`, or the event never reaching the window).
+
 ## Still unverified
 
-0. A real mouse drag of a `.mat` file from the VS Code Explorer and from Windows Explorer (only a simulated drop is
-   tested; VS Code may keep drops from outside VS Code to itself).
+0. A real mouse drag of a `.mat` file: from Windows Explorer, and from the VS Code Explorer with Shift held (the
+   synthetic events above follow VS Code's code, but no real drag was done).
 
 1. The Command Window UI with real MATLAB: everything in sections 1–6.
 2. That the official MATLAB terminal keeps working normally while we are attached (1.5). Seen by the user: output of

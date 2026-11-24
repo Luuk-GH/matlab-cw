@@ -2,7 +2,8 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { ConsoleView } from '../consoleView';
 import { OFFICIAL_EXTENSION_ID } from '../locator';
-import { CommandWindowReveal, matlabString, SessionManager } from '../session';
+import { CommandWindowReveal, SessionManager } from '../session';
+import { loadMatBytes, loadMatFiles } from '../loadMat';
 import { FromWebview, HelpResult, InputMode, TestAction, ToWebview, WebviewSettings } from './protocol';
 
 const HISTORY_KEY = 'matlabCommandWindow.commandWindow.history';
@@ -189,7 +190,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
     if (this.view && this.ready) { void this.view.webview.postMessage(msg); }
   }
 
-  private addHistory(line: string): void {
+  addHistory(line: string): void {
     if (!line.trim()) { return; }   // repeats are kept: the Command History pop-up shows them as "2x"
     this.history.push(line);
     if (this.history.length > HISTORY_MAX) { this.history.splice(0, this.history.length - HISTORY_MAX); }
@@ -215,7 +216,10 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
           await this.session.interrupt();
           break;
         case 'dropFiles':
-          await this.loadDropped(m.uris);
+          this.loadDropped(m.uris);
+          break;
+        case 'dropFileData':
+          if (!(await loadMatBytes(this.session, m.name, bytesOf(m.data)))) { dropHint(); }
           break;
         case 'cancelQueued':
           this.session.cancelQueued(m.id);
@@ -263,14 +267,11 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
   }
 
   /** .mat files dropped on the Command Window: load each one, as typed (other files are ignored). */
-  private async loadDropped(uris: string[]): Promise<void> {
-    const files = uris.map(u => { try { return vscode.Uri.parse(u, true); } catch { return undefined; } })
-      .filter((u): u is vscode.Uri => !!u && u.scheme === 'file' && /\.mat$/i.test(u.fsPath));
-    if (!files.length) {
-      void vscode.window.setStatusBarMessage('MATLAB Command Window: drop .mat files to load them', 4000);
-      return;
-    }
-    for (const f of files) { void this.session.execute(`load(${matlabString(f.fsPath)})`).catch(() => undefined); }
+  private loadDropped(uris: string[]): void {
+    // URIs (uri-list, resourceurls) or plain paths (VS Code's codefiles).
+    const files = uris.map(u => { try { return /^[a-z][\w+.-]+:\/\//i.test(u) ? vscode.Uri.parse(u, true) : vscode.Uri.file(u); } catch { return undefined; } })
+      .filter((u): u is vscode.Uri => !!u);
+    if (!loadMatFiles(this.session, files)) { dropHint(); }
   }
 
   private async help(name: string): Promise<HelpResult | null> {
@@ -332,6 +333,24 @@ export function registerCommandWindow(context: vscode.ExtensionContext, session:
     provider,
     vscode.window.registerWebviewViewProvider(CommandWindowProvider.viewId, provider, { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.commands.registerCommand('matlabCommandWindow.commandWindow.clear', () => provider.clear()),
+    // Explorer: right-click .mat files (several when selected together) -> load them.
+    vscode.commands.registerCommand('matlabCommandWindow.loadMatFile', (uri?: vscode.Uri, uris?: vscode.Uri[]) => {
+      const files = uris?.length ? uris : uri ? [uri] : [];
+      if (files.length) { session.reveal(true); }
+      if (!loadMatFiles(session, files)) { dropHint(); }
+    }),
   );
   return provider;
+}
+
+function dropHint(): void {
+  void vscode.window.setStatusBarMessage('MATLAB Command Window: only .mat files can be loaded this way', 4000);
+}
+
+/** The bytes of a dropped file as posted by the webview (a Uint8Array, or its ArrayBuffer). */
+function bytesOf(data: unknown): Uint8Array {
+  if (data instanceof Uint8Array) { return data; }
+  if (data instanceof ArrayBuffer) { return new Uint8Array(data); }
+  if (ArrayBuffer.isView(data)) { return new Uint8Array(data.buffer, data.byteOffset, data.byteLength); }
+  return new Uint8Array(0);
 }

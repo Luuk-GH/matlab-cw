@@ -57,6 +57,8 @@ export type FromWebview =
   | { type: 'stop' }
   | { type: 'cancelQueued'; id: number }
   | { type: 'dropFiles'; uris: string[] }
+  /** A file dropped from outside VS Code: its bytes (the webview cannot see its path). */
+  | { type: 'dropFileData'; name: string; data: Uint8Array }
   | { type: 'complete'; id: number; prefix: string; code: string; offset: number }
   | { type: 'help'; id: number; name: string }
   | { type: 'signature'; id: number; code: string; offset: number }
@@ -76,6 +78,8 @@ export type TestAction =
   | { kind: 'clickStop' }
   | { kind: 'cancelQueued'; index: number }
   | { kind: 'drop'; type: string; data: string }
+  /** A file dragged from outside VS Code (only its bytes, base64), dropped on the input line. */
+  | { kind: 'dropFile'; name: string; base64: string }
   | { kind: 'hoverShow'; word: string }
   | { kind: 'hover'; word: string };
 

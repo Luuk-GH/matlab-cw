@@ -3,7 +3,7 @@
   "displayName": "MATLAB Command Window",
   "icon": "media/icon.png",
   "description": "A better Command Window for the official MATLAB extension: HTML output with clickable error links, collapsible output, completion pop-up, help tooltips and Stop, attached to the MATLAB the official extension already runs (no second MATLAB). Not affiliated with or endorsed by MathWorks.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "local",
   "license": "MIT",
   "private": true,
@@ -81,6 +81,11 @@
         "command": "matlabCommandWindow.runSelection",
         "title": "Run Selection in Command Window",
         "category": "MATLAB Command Window"
+      },
+      {
+        "command": "matlabCommandWindow.loadMatFile",
+        "title": "Load into MATLAB Command Window",
+        "category": "MATLAB Command Window"
       }
     ],
     "menus": {
@@ -111,6 +116,19 @@
           "command": "matlabCommandWindow.runFile",
           "when": "editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow",
           "group": "navigation@0"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "matlabCommandWindow.loadMatFile",
+          "when": "resourceExtname =~ /^\\.mat$/i",
+          "group": "matlabCommandWindow@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "matlabCommandWindow.loadMatFile",
+          "when": "false"
         }
       ],
       "editor/context": [
@@ -158,7 +176,7 @@
         "matlabCommandWindow.runInCommandWindow": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Run MATLAB files in this Command Window: **F5** runs the file, **Ctrl+Enter** the current `%%` section, **Shift+Enter** the selection, instead of the MATLAB extension's terminal. The editor keeps the focus. When MATLAB stops at a breakpoint, the Command Window (K>>) stays in front instead of the MATLAB terminal. Turn off to give these keys back to the MATLAB extension."
+          "markdownDescription": "Run MATLAB files in this Command Window: **F5** runs the file, **Ctrl+Enter** the current `%%` section, **Shift+Enter** the selection, instead of the MATLAB extension's terminal. The editor keeps the focus. Ctrl+Enter and Shift+Enter also work at K>> (F5 stays the debugger's Continue). When MATLAB stops at a breakpoint, the Command Window (K>>) stays in front instead of the MATLAB terminal. Turn off to give these keys back to the MATLAB extension."
         }
       }
     },
@@ -192,12 +210,12 @@
         "key": "ctrl+enter",
         "mac": "cmd+enter",
         "command": "matlabCommandWindow.runSection",
-        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed && !matlab.isDebugging"
+        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed"
       },
       {
         "key": "shift+enter",
         "command": "matlabCommandWindow.runSelection",
-        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed && !matlab.isDebugging && editorHasSelection && !editorHasMultipleSelections"
+        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed && editorHasSelection && !editorHasMultipleSelections"
       }
     ]
   },

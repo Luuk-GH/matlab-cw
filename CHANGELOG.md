@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 (2026-11-24)
+
+- Run Selection (Shift+Enter) adds the selected code to the Command History, like MATLAB's Evaluate Selection.
+- Ctrl+Enter and Shift+Enter run in the Command Window also while debugging (at K>>, in the stopped workspace);
+  before, they went to the MATLAB terminal. F5 is left to the debugger (*Continue*).
+- Dropping `.mat` files works: VS Code blocked the drop. From Windows Explorer it now works directly (loaded from a
+  temporary copy, as the webview gets no path); from the VS Code Explorer hold **Shift** while dropping (VS Code's
+  rule for webviews), or right-click → *Load into MATLAB Command Window*.
+
 ## 0.2.0 (2026-11-24)
 
 - Connects only to the MATLAB that the MATLAB extension in the same VS Code window started (its process descends

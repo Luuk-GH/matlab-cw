@@ -250,6 +250,18 @@ export async function run(): Promise<void> {
     check('the MATLAB terminal took the panel (as at a breakpoint)', !!hidden);
     check('at a breakpoint the Command Window comes back in front of it', !!back && cw.isVisible());
     matlabTerminal.dispose();
+    // At K>> Shift+Enter / Ctrl+Enter still run in the Command Window (in the stopped workspace); F5 stays Continue.
+    {
+      const keys = (ext.packageJSON.contributes.keybindings as { key: string; when: string }[]);
+      const debugOk = (key: string) => !/matlab\.isDebugging/.test(keys.find(k => k.key === key)?.when ?? 'matlab.isDebugging');
+      check('Shift+Enter and Ctrl+Enter also apply while debugging, F5 does not', debugOk('shift+enter') && debugOk('ctrl+enter') && !debugOk('f5'));
+      const kbDoc = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument({ language: 'matlab', content: 'kbSel = kb + 41' }));
+      kbDoc.selection = new vscode.Selection(0, 0, 0, 15);
+      await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSelection')), 15000);
+      s = await untilText(/kbSel =\s+42/);
+      check('Run Selection at K>> runs in the Command Window, in the stopped workspace', !!s && (await untilMode('debug'))?.prompt === 'K>>', JSON.stringify((await snap()).text.slice(-200)));
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    }
     await typeLine('dbcont');
     await untilText(/after keyboard/);
     s = await untilMode('ready');
@@ -282,6 +294,11 @@ export async function run(): Promise<void> {
     demo.selection = new vscode.Selection(1, 0, 1, 6);   // "a = 1;"
     await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSelection')), 15000);
     check('Run Selection runs the selected code', !!(await untilText(/^>> a = 1;$/m)), JSON.stringify((await snap()).text.slice(-500)));
+    await untilMode('ready');
+    await cw.test({ key: 'ArrowUp', kind: 'key' });
+    s = await snap();
+    check('Run Selection adds the selection to the Command History', s.historyPopup[s.historyPopup.length - 1] === 'a = 1;', JSON.stringify(s.historyPopup.slice(-3)));
+    await cw.test({ key: 'Escape', kind: 'key' });
     demo.selection = new vscode.Selection(0, 0, 0, 0);
     await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSection')), 15000);
     check('Run Section runs the section at the cursor', !!(await untilText(/>> % error_demo\.m: section lines 1–\d/)), JSON.stringify((await snap()).text.slice(-500)));
@@ -299,9 +316,30 @@ export async function run(): Promise<void> {
         await untilMode('ready');
         await typeLine('disp(mcwDrop)');
         check('the dropped .mat file is loaded into the workspace', !!(await untilText(/^\s*4242$/m)), JSON.stringify((await snap()).text.slice(-200)));
-        try { fs.unlinkSync(mat); } catch { /* gone */ }
       }
       await untilMode('ready');
+      // From Windows Explorer: only the bytes arrive (no path); VS Code's host must not see the drag (it would block
+      // the webview) and CodeMirror must not paste the bytes; the extension loads a temporary copy and deletes it.
+      if (real) { await typeLine('clear mcwDrop'); await untilMode('ready'); }
+      const bytes = real ? fs.readFileSync(mat) : Buffer.from('MATLAB 5.0 MAT-file (fake)');
+      const r = await cw.test({ kind: 'dropFile', name: 'mcw_drop_bytes.mat', base64: bytes.toString('base64') }) as { reachedWindow: number; inputChanged: boolean };
+      check('a file dragged from outside VS Code is kept from VS Code and the input line', r?.reachedWindow === 0 && !r.inputChanged, JSON.stringify(r));
+      s = await untilText(/^>> load\('([^\n]*mcw-drop-[^\n]*mcw_drop_bytes\.mat)'\)$/m, 5000);
+      check('dropping a file from outside VS Code loads a copy of it', !!s, JSON.stringify((await snap()).text.slice(-300)));
+      await untilMode('ready');
+      const copy = /^>> load\('([^\n]*mcw-drop-[^\n]*mcw_drop_bytes\.mat)'\)$/m.exec(s?.text ?? '')?.[1]?.replace(/''/g, "'");
+      check('the temporary copy is deleted after load()', !!copy && !!(await waitFor(() => !fs.existsSync(path.dirname(copy)), 3000)), copy);
+      if (real) {
+        await typeLine('disp(mcwDrop)');
+        check('the copy is loaded into the workspace', !!(await untilText(/^\s*4242$[\s\S]*^\s*4242$/m)), JSON.stringify((await snap()).text.slice(-200)));
+        await untilMode('ready');
+      }
+      // Explorer: right-click a .mat file -> Load into MATLAB Command Window.
+      await vscode.commands.executeCommand('matlabCommandWindow.loadMatFile', vscode.Uri.file(mat), [vscode.Uri.file(mat)]);
+      s = await waitFor(async () => { const x = await snap(); return (x.text.match(/^>> load\('[^\n]*mcw_drop_test\.mat'\)$/gm) ?? []).length === 2 ? x : undefined; }, 5000);
+      check('Explorer: Load into MATLAB Command Window loads the .mat file', !!s, JSON.stringify((await snap()).text.slice(-300)));
+      await untilMode('ready');
+      if (real) { try { fs.unlinkSync(mat); } catch { /* gone */ } }
     }
     await untilMode('ready');
 

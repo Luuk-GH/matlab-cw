@@ -31,8 +31,10 @@ The *MATLAB CW* tab in the bottom panel:
 - **File and folder names**, like the MATLAB desktop: in an argument that MATLAB's function signatures declare as a
   file or folder (`load('`, `cd `, `addpath('`, `genpath('`, `readtable('`, `imread('`, …) the pop-up lists the
   matching names in MATLAB's current folder, folders first. Accepting a folder (`data\`) lists what is inside it.
-- **Drop a `.mat` file** (from the VS Code Explorer) on the Command Window to `load` it. Other files are ignored.
-  VS Code may not pass on drops from Windows Explorer.
+- **Load a `.mat` file**: drop it on the Command Window from Windows Explorer, or from the VS Code Explorer while
+  holding **Shift** (VS Code keeps its own drags away from webviews otherwise), or right-click it in the VS Code
+  Explorer → *Load into MATLAB Command Window*. A file from outside VS Code is loaded from a temporary copy (the
+  Command Window cannot see its path). Other files are ignored.
 - **Signature help** like the editor's: while you type a call, a box shows MATLAB's own forms of the function
   (`plot(Y,LineSpec,options)  1 of 6`), the current argument in bold, and what it is (`y-coordinates`,
   `scalar | vector | matrix`). **Alt+↑/↓** or a click on "1 of 6" shows the other forms, **Esc** closes it. Functions
@@ -103,7 +105,7 @@ quits MATLAB. Nothing is added to your MATLAB path. Details: `RESEARCH.md`.
 | Setting | Default | |
 |---|---|---|
 | `matlabCommandWindow.autoConnect` | `true` | Connect when the panel is shown; reconnect when `shareMATLABSession()` runs again. |
-| `matlabCommandWindow.runInCommandWindow` | `true` | F5, Ctrl+Enter and Shift+Enter in `.m` files run in the Command Window instead of the MATLAB extension's terminal. |
+| `matlabCommandWindow.runInCommandWindow` | `true` | F5, Ctrl+Enter and Shift+Enter in `.m` files run in the Command Window instead of the MATLAB extension's terminal. Ctrl+Enter and Shift+Enter also at K>> (F5 stays *Continue*). Run Selection adds the code to the Command History. |
 | `matlabCommandWindow.historyPopup` | `true` | ↑ opens the Command History pop-up; off: ↑/↓ recall on the line. |
 | `matlabCommandWindow.collapseLongOutput` | `false` | Collapse output longer than 40 lines once its command finishes. |
 | `matlabCommandWindow.workspaceBesideCommandWindow` | `true` | Put the MATLAB *Workspace* view beside the Command Window (once); off moves it back. |

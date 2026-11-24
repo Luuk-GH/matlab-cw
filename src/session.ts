@@ -120,6 +120,9 @@ export class SessionManager implements vscode.Disposable {
     return kind;
   }
 
+  /** Add code run from the editor to the Command History (Run Selection, like MATLAB's Evaluate Selection). */
+  addHistory(code: string): void { this.forViews(v => v.addHistory(code.replace(/\s+$/, ''))); }
+
   /** The × of a queued command: drop it before it runs. */
   cancelQueued(id: number): void { this.session?.cancelQueued(id); }
 

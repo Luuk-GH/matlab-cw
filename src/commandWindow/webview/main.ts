@@ -296,22 +296,39 @@ document.addEventListener('mouseup', e => {
   if ((e.target as HTMLElement).closest('a, button, .cm-editor, .cm-tooltip, #sigbox, #histpop')) { return; }
   if (!window.getSelection()?.toString()) { editor.focus(); }
 });
-// Drop .mat files (from the VS Code Explorer or an editor tab) to load them. The extension keeps only .mat files.
-const DROP_TYPES = ['application/vnd.code.uri-list', 'resourceurls', 'text/uri-list'];
-const canDrop = (e: DragEvent) => !!e.dataTransfer && DROP_TYPES.some(t => e.dataTransfer!.types.includes(t));
-document.addEventListener('dragover', e => {
-  if (!canDrop(e)) { return; }
-  e.preventDefault();
-  e.dataTransfer!.dropEffect = 'copy';
-  document.body.classList.add('drop-target');
-});
-document.addEventListener('dragleave', e => { if (!e.relatedTarget) { document.body.classList.remove('drop-target'); } });
+// Drop .mat files to load them: from Windows Explorer (or another app) directly; from VS Code's own Explorer or an
+// editor tab while holding Shift (VS Code keeps workbench drags away from webviews unless Shift is held).
+// The handlers run in the capture phase and stop the events there: VS Code's webview host listens on this window
+// and would otherwise block the webview as soon as files are dragged over it, and CodeMirror would paste the file's
+// bytes into the input line.
+const DROP_TYPES = ['application/vnd.code.uri-list', 'resourceurls', 'codefiles', 'text/uri-list'];
+const canDrop = (e: DragEvent) => !!e.dataTransfer && [...DROP_TYPES, 'Files'].some(t => e.dataTransfer!.types.includes(t));
+for (const type of ['dragenter', 'dragover'] as const) {
+  document.addEventListener(type, e => {
+    if (!canDrop(e)) { return; }
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer!.dropEffect = 'copy';
+    document.body.classList.add('drop-target');
+  }, true);
+}
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) { document.body.classList.remove('drop-target'); } }, true);
 document.addEventListener('drop', e => {
   document.body.classList.remove('drop-target');
   if (!canDrop(e)) { return; }
   e.preventDefault();
-  post({ type: 'dropFiles', uris: droppedUris(e.dataTransfer!) });
-});
+  e.stopPropagation();
+  const dt = e.dataTransfer!;
+  const uris = droppedUris(dt);
+  if (uris.length || !dt.files.length) { post({ type: 'dropFiles', uris }); return; }
+  // From outside VS Code: only the files' contents are available here (no paths), the extension loads a copy.
+  const mats = [...dt.files].filter(f => /\.mat$/i.test(f.name));
+  if (!mats.length) { post({ type: 'dropFiles', uris: [] }); return; }
+  for (const f of mats) {
+    f.arrayBuffer().then(b => post({ type: 'dropFileData', name: f.name, data: new Uint8Array(b) }),
+      () => post({ type: 'dropFiles', uris: [] }));
+  }
+}, true);
 
 /** The file URIs in a drop: VS Code's own list (JSON array or lines), else the standard uri-list. */
 function droppedUris(dt: DataTransfer): string[] {
@@ -985,6 +1002,20 @@ async function runTest(id: number, a: TestAction): Promise<void> {
       dt.setData(a.type, a.data);
       for (const type of ['dragover', 'drop']) { document.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true })); }
       result = true;
+      break;
+    }
+    case 'dropFile': {   // like Windows Explorer: a File (no path) over the input line; VS Code's host listens on window
+      const dt = new DataTransfer();
+      dt.items.add(new File([Uint8Array.from(atob(a.base64), c => c.charCodeAt(0))], a.name));
+      let reachedWindow = 0;
+      const count = () => { reachedWindow++; };
+      const types = ['dragenter', 'dragover', 'drop'];
+      for (const type of types) { window.addEventListener(type, count); }
+      const before = editor.state.doc.toString();
+      for (const type of types) { editor.contentDOM.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true })); }
+      for (const type of types) { window.removeEventListener(type, count); }
+      await new Promise(r => setTimeout(r, 100));
+      result = { reachedWindow, inputChanged: editor.state.doc.toString() !== before };
       break;
     }
     case 'cancelQueued': {

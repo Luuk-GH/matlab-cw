@@ -54,5 +54,6 @@ export async function runSelection(session: SessionManager): Promise<void> {
     : e.document.lineAt(e.selection.active.line).text;   // no selection: the current line
   if (onlyComments(code)) { return; }
   session.reveal(true);
+  session.addHistory(code);   // like MATLAB's Evaluate Selection: the Command History pop-up and Up find it
   await session.execute(code);
 }
