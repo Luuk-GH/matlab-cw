@@ -1,5 +1,6 @@
 %% Make a noisy signal
 t = linspace(0, 1, 500);
+
 x = sin(2*pi*5*t) + 0.3*randn(size(t));
 
 %% Summarise it
@@ -9,3 +10,8 @@ peakValue = max(x)
 %% Count samples above a threshold
 thr = input('Threshold: ');
 fprintf('%d samples above %g\n', nnz(x > thr), thr);
+
+%% Some more
+% figure("Name",'hello')
+% plot([1,3],[4,5])
+
