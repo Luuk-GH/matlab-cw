@@ -16,7 +16,7 @@ async function waitFor<T>(fn: () => Promise<T | undefined | false> | T | undefin
     await sleep(100);
   }
 }
-interface Snap { text: string; mode: string; completions: string[]; signature: string; tooltip: string; links: { func?: string; line?: number }[] }
+interface Snap { text: string; mode: string; completions: string[]; signature: string; tooltip: string; links: { func?: string; line?: number }[]; historyPopup: string[]; queued: string[] }
 
 export async function run(): Promise<void> {
   const out = process.env.MCW_DEMO_DIR!;
@@ -28,7 +28,8 @@ export async function run(): Promise<void> {
   const ws = vscode.workspace.workspaceFolders![0].uri.fsPath;
   const mq = (p: string) => p.replace(/'/g, "''");
   // Undefined while the webview (re)loads, e.g. right after the panel is maximized.
-  const empty: Snap = { text: '', mode: '', completions: [], signature: '', tooltip: '', links: [] };
+  const empty: Snap = { text: '', mode: '', completions: [], signature: '', tooltip: '', links: [], historyPopup: [], queued: [] };
+  const matFile = path.join(ws, 'measurements.mat');   // made off camera for the file-name completion, deleted after
   const snap = async () => ((await cw.test({ kind: 'snapshot' })) as Snap | undefined) ?? empty;
   const idle = () => waitFor(async () => ['ready', 'debug'].includes((await snap()).mode), 20000);
   const typeSlow = async (text: string) => {
@@ -48,6 +49,7 @@ export async function run(): Promise<void> {
     await sleep(300);
   };
   let startFolder: string | undefined;
+  let breakpointsSaved = false;
   try {
     // Set up off camera.
     await vscode.commands.executeCommand('workbench.action.closeSidebar');
@@ -58,6 +60,10 @@ export async function run(): Promise<void> {
     await waitFor(() => api.session.state === 'idle', 30000);
     startFolder = await waitFor(() => api.session.queryText('pwd'), 20000);
     await api.session.execute(`cd('${mq(ws)}'); clear A results x t peakValue thr n`);
+    await api.session.execute("mcwSamples = rand(1, 100); save('measurements.mat', 'mcwSamples'); clear mcwSamples");
+    // The user's own breakpoints (e.g. one in signal_demo.m) would stop the demo at K>>: keep them aside, put back after.
+    await api.session.execute('mcwDemoBreakpoints = dbstatus(\'-completenames\'); dbclear all');
+    breakpointsSaved = true;
     await cw.test({ kind: 'snapshot' });
     await vscode.commands.executeCommand('matlabCommandWindow.commandWindow.clear').then(undefined, () => undefined);
     await panelMax(true);
@@ -79,9 +85,34 @@ export async function run(): Promise<void> {
     if (linkIdx >= 0) { await cw.test({ kind: 'clickLink', index: linkIdx }); }
     await sleep(2200);
 
-    scene('Completion from MATLAB itself');
+    scene('↑ opens the Command History: Shift+↑ selects several, Enter runs them');
     await vscode.commands.executeCommand('matlabCommandWindow.show');
     await panelMax(true);
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    await waitFor(async () => (await snap()).historyPopup.length > 0, 5000);
+    await sleep(1300);
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    await sleep(700);
+    await cw.test({ kind: 'key', key: 'Shift-ArrowUp' });
+    await sleep(1600);
+    await cw.test({ kind: 'key', key: 'Escape' });
+    await sleep(400);
+
+    scene('File and folder names complete, from MATLAB, wherever a function takes a path');
+    await typeSlow("S = load('me");
+    await cw.test({ kind: 'key', key: 'Tab' });
+    await waitFor(async () => (await snap()).completions.length > 0, 8000);
+    await sleep(1600);
+    await cw.test({ kind: 'key', key: 'Enter' });   // accepts measurements.mat
+    await sleep(500);
+    await typeSlow(');');
+    await sleep(300);
+    await enter();
+    await idle();
+    await sleep(500);
+    await command('size(S.mcwSamples)', 1300);
+
+    scene('Completion from MATLAB itself');
     await command("results = struct('alpha', 1, 'beta', 2, 'gamma', 3);", 500);
     await typeSlow('results.');
     await cw.test({ kind: 'key', key: 'Ctrl-Space' });
@@ -115,6 +146,26 @@ export async function run(): Promise<void> {
     await idle();
     await sleep(1800);
 
+    scene('Hover help in .m files, from MATLAB\'s own help');
+    await vscode.window.showTextDocument(demoDoc);
+    ed.selection = new vscode.Selection(1, 6, 1, 6);   // in "linspace"
+    await sleep(500);
+    await vscode.commands.executeCommand('editor.action.showHover');
+    await sleep(3200);
+    await vscode.commands.executeCommand('closeParameterHints').then(undefined, () => undefined);
+
+    scene('Shift+Enter runs the selection; it joins the Command History');
+    ed.selection = new vscode.Selection(7, 0, 7, 18);   // peakValue = max(x)
+    await sleep(900);
+    await vscode.commands.executeCommand('matlabCommandWindow.runSelection');
+    await idle();
+    await sleep(1200);
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    await sleep(1800);
+    await cw.test({ kind: 'key', key: 'Escape' });
+    await vscode.window.showTextDocument(demoDoc);
+    await sleep(400);
+
     scene('Ctrl+Enter runs the current section');
     await vscode.window.showTextDocument(demoDoc);
     ed.selection = new vscode.Selection(5, 0, 5, 0);
@@ -137,11 +188,15 @@ export async function run(): Promise<void> {
     await api.session.execute('dbclear in scale_to_sum');
     await sleep(600);
 
-    scene('Long runs: output streams in, Stop interrupts');
+    scene('Long runs: output streams in, the next commands wait in line, Stop interrupts');
     await typeSlow('count_forever');
     await enter();
     await waitFor(async () => (await snap()).mode === 'busy', 8000);
-    await sleep(3200);
+    await sleep(1500);
+    await typeSlow('disp(A)');
+    await enter();
+    await waitFor(async () => (await snap()).queued.length > 0, 3000);
+    await sleep(2200);
     await cw.test({ kind: 'clickStop' });
     await idle();
     await sleep(1800);
@@ -152,7 +207,11 @@ export async function run(): Promise<void> {
     fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(timeline, null, 1));
     // Leave the user's MATLAB as found.
     await Promise.race([api.session.execute("if ~isempty(dbstack), dbquit('all'); end"), sleep(5000)]);
-    await Promise.race([api.session.execute(`dbclear in scale_to_sum; cd('${mq(startFolder ?? '.')}'); clear A total results x t peakValue thr n ans`), sleep(10000)]);
+    await Promise.race([api.session.execute(`dbclear in scale_to_sum; cd('${mq(startFolder ?? '.')}'); clear A S total results x t peakValue thr n ans`), sleep(10000)]);
+    if (breakpointsSaved) {
+      await Promise.race([api.session.execute('dbclear all; dbstop(mcwDemoBreakpoints); clear mcwDemoBreakpoints'), sleep(10000)]);
+    }
+    try { fs.unlinkSync(matFile); } catch { /* gone */ }
     fs.writeFileSync(path.join(out, 'done.txt'), log.join('\n'));
   }
 }
