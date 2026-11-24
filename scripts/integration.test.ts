@@ -9,6 +9,7 @@ import type { Snapshot } from '../src/commandWindow/protocol';
 import type { CommandWindowApi } from '../src/extension';
 import { LsBackend } from '../src/backend/lsBackend';
 import { readSharedSession } from '../src/backend/sharedSession';
+import { docPageFromOutput, docPageQuery } from '../src/docLink';
 
 /** MCW_IT_REAL=1 (npm run test:real): against the real shared MATLAB instead of the fakes. */
 const real = process.env.MCW_IT_REAL === '1';
@@ -171,6 +172,26 @@ export async function run(): Promise<void> {
     await cw.test({ kind: 'key', key: 'Escape' }); await cw.test({ kind: 'key', key: 'Escape' });
     const tip = (await cw.test({ kind: 'hover', word: 'zeros' })) as string | null;
     check('help tooltip from MATLAB', !!tip && /X = zeros\(n\)/.test(tip) && /Create array of all zeros/.test(tip), String(tip));
+    if (real) { check('the help tooltip links to the documentation', /Documentation/.test(tip ?? ''), String(tip)); }
+    // ---- hover help in MATLAB editors, from the same MATLAB help (VS Code's own hover request) ----
+    {
+      const hdoc = await vscode.workspace.openTextDocument({ language: 'matlab', content: "y = zeros(3); % zeros\ndisp('zeros')" });
+      const hover = async (line: number, col: number) => {
+        const hs = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', hdoc.uri, new vscode.Position(line, col));
+        return (hs ?? []).flatMap(h => h.contents.map(c => typeof c === 'string' ? c : c.value)).join('\n');
+      };
+      const md = await hover(0, 6);
+      check('editor hover shows MATLAB help for a function', /X = zeros\(n\)/.test(md) && /Create array of all zeros/.test(md), md);
+      if (real) { check('editor hover links to the MathWorks documentation', md.includes('command:matlabCommandWindow.openDoc?') && md.includes('"https://www.mathworks.com/help/matlab/ref/zeros.html"'), md); }
+      if (real) {
+        // A Documentation click asks MATLAB for the page its doc would open (the derived address is wrong for linspace).
+        const page = async (n: string) => docPageFromOutput(await api.session.queryText('evalc', [docPageQuery(n)], true, 10000));
+        const lin = await page('linspace'), zer = await page('zeros');
+        check('MATLAB gives the exact documentation page (linspace -> double.linspace)', !!lin?.startsWith('https://www.mathworks.com/help/matlab/ref/double.linspace.html')
+          && !!zer?.startsWith('https://www.mathworks.com/help/matlab/ref/zeros.html'), `${lin} | ${zer}`);
+      }
+      check('no editor hover in comments or strings', !/zeros\(n\)/.test(await hover(0, 18)) && !/zeros\(n\)/.test(await hover(1, 8)));
+    }
     await cw.test({ kind: 'type', text: 'zeros(' });
     s = await waitFor(async () => { const x = await snap(); return /X = zeros/.test(x.tooltip) || /zeros\(/.test(x.signature) ? x : undefined; }, 8000);
     check('usage hint while typing a call', !!s, `${(await snap()).tooltip} | ${(await snap()).signature}`);

@@ -3,7 +3,7 @@
   "displayName": "MATLAB Command Window",
   "icon": "media/icon.png",
   "description": "A better Command Window for the official MATLAB extension: HTML output with clickable error links, collapsible output, completion pop-up, help tooltips and Stop, attached to the MATLAB the official extension already runs (no second MATLAB). Not affiliated with or endorsed by MathWorks.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "local",
   "license": "MIT",
   "private": true,
@@ -172,6 +172,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "**Up** opens the Command History pop-up, as in MATLAB: arrows move, **Enter** runs, **Right** puts the command on the line, **Shift+Up/Down** selects several. Turn off to recall commands on the input line instead."
+        },
+        "matlabCommandWindow.editorHover": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Hover a name in a `.m` file to see its usage and description from the connected MATLAB's own `help` (and a link to its file and MathWorks documentation). Only while the Command Window is connected and MATLAB is idle or at K>>."
         },
         "matlabCommandWindow.runInCommandWindow": {
           "type": "boolean",

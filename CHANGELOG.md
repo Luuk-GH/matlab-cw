@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 (2026-11-24)
+
+- Hover help in `.m` files: usage forms and description from the connected MATLAB's `help`, links to the MathWorks
+  documentation and the defining file (setting `matlabCommandWindow.editorHover`). Not in comments, strings or
+  fields; no network and no second MATLAB.
+- The help tooltip in the Command Window has a Documentation link too. A click asks MATLAB which page its `doc` would
+  open (e.g. `double.linspace.html` for linspace) and opens it in the browser.
+
 ## 0.2.1 (2026-11-24)
 
 - Run Selection (Shift+Enter) adds the selected code to the Command History, like MATLAB's Evaluate Selection.

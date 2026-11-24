@@ -27,7 +27,12 @@ The *MATLAB CW* tab in the bottom panel:
   order, **→** (or ←, Tab) puts them on the line to edit, **Esc** closes; typing narrows the list; double-click runs.
   Turn off `matlabCommandWindow.historyPopup` to recall commands on the line with ↑/↓ instead.
 - **Completion pop-up** from MATLAB itself (variables, fields, functions; **Ctrl+Space** or **Tab**) and a **help
-  tooltip** when you hover a name.
+  tooltip** when you hover a name, with a **Documentation** link (the page MATLAB's own `doc` would open, in your
+  browser).
+- **Hover help in `.m` files**, from the same MATLAB `help`: usage forms, description, links to the documentation and
+  the defining file. MathWorks' extension gives signature help while typing but no hover. Works while the Command
+  Window is connected and MATLAB is idle or at K>> (answers are kept, so names seen before also work while it runs);
+  nothing goes over the network until you click Documentation. Setting `matlabCommandWindow.editorHover`.
 - **File and folder names**, like the MATLAB desktop: in an argument that MATLAB's function signatures declare as a
   file or folder (`load('`, `cd `, `addpath('`, `genpath('`, `readtable('`, `imread('`, …) the pop-up lists the
   matching names in MATLAB's current folder, folders first. Accepting a folder (`data\`) lists what is inside it.
@@ -105,6 +110,7 @@ quits MATLAB. Nothing is added to your MATLAB path. Details: `RESEARCH.md`.
 | Setting | Default | |
 |---|---|---|
 | `matlabCommandWindow.autoConnect` | `true` | Connect when the panel is shown; reconnect when `shareMATLABSession()` runs again. |
+| `matlabCommandWindow.editorHover` | `true` | Hover a name in a `.m` file for its MATLAB help. |
 | `matlabCommandWindow.runInCommandWindow` | `true` | F5, Ctrl+Enter and Shift+Enter in `.m` files run in the Command Window instead of the MATLAB extension's terminal. Ctrl+Enter and Shift+Enter also at K>> (F5 stays *Continue*). Run Selection adds the code to the Command History. |
 | `matlabCommandWindow.historyPopup` | `true` | ↑ opens the Command History pop-up; off: ↑/↓ recall on the line. |
 | `matlabCommandWindow.collapseLongOutput` | `false` | Collapse output longer than 40 lines once its command finishes. |

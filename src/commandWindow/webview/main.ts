@@ -444,6 +444,14 @@ function helpDom(r: HelpResult): HTMLElement {
     f.addEventListener('mousedown', e => { e.preventDefault(); post({ type: 'openFile', file: r.file! }); });
     div.append(f);
   }
+  if (r.docUrl) {
+    const d = document.createElement('a');
+    d.className = 'link help-docurl';
+    d.textContent = 'Documentation';
+    d.title = r.docUrl;
+    d.addEventListener('mousedown', e => { e.preventDefault(); post({ type: 'openDoc', url: r.docUrl!, name: r.name }); });
+    div.append(d);
+  }
   return div;
 }
 

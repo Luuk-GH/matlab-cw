@@ -13,6 +13,8 @@ export interface HelpInfo {
   doc: string;
   /** Defining file, when `which` names an existing file. */
   file?: string;
+  /** MathWorks documentation page, for functions that ship with MATLAB or a toolbox. */
+  docUrl?: string;
 }
 
 /** Strip MATLAB hyperlinks/markup from help text. */
@@ -63,7 +65,7 @@ export function parseHelp(name: string, whichText: string, help: string, fileTex
     const decl = functionDeclaration(fileText, short);
     if (decl) { add(decl); }
   }
-  return { signatures, doc, file };
+  return { signatures, doc, file, docUrl: docUrlFromWhich(name, whichText) };
 }
 
 /** which() output: a path, "built-in (path)", "x is a variable.", or ''. */
@@ -73,6 +75,19 @@ export function fileFromWhich(w: string): string | undefined {
   const p = builtIn ? builtIn[1] : t;
   if (/^[A-Za-z]:[\\/].*\.(m|mlx)$/i.test(p) || /^\/.*\.(m|mlx)$/.test(p)) { return p; }
   return undefined;
+}
+
+/**
+ * The MathWorks documentation page of a function that ships with MATLAB or a toolbox: which() names a file (or a
+ * built-in) under <matlabroot>/toolbox/<product>/, and the page is help/<product>/ref/<name>.html. Nothing for user
+ * functions, methods (a.b) or MATLAB's shared/internal folders.
+ */
+export function docUrlFromWhich(name: string, whichText: string): string | undefined {
+  if (!/^[A-Za-z]\w*$/.test(name)) { return undefined; }
+  const t = (whichText ?? '').trim().replace(/^built-in \((.*)\)$/, '$1');
+  const m = /(?:[\\/]R20\d\d[ab]|MATLAB_R20\d\d[ab]\.app)[\\/]toolbox[\\/](\w+)[\\/]/i.exec(t);
+  if (!m || /^(shared|local|internal)$/i.test(m[1]) || /[\\/](private|\+\w+|@\w+)[\\/]/.test(t)) { return undefined; }
+  return `https://www.mathworks.com/help/${m[1].toLowerCase()}/ref/${name.toLowerCase()}.html`;
 }
 
 /** "function [a, b] = name(x, y)" -> "[a, b] = name(x, y)" for the function called `name` (or the first one). */

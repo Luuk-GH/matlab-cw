@@ -154,8 +154,17 @@ Why drops failed (read from VS Code's code, webview `pre/index.html` and `webvie
 outside VS Code the host's own `dragenter`/`dragover` listeners on the webview's window block it unless the page
 handles the event first (`defaultPrevented`, or the event never reaching the window).
 
+Added 2026-11-24, 0.3.0 (79 checks): editor hover through VS Code's hover request (`y = zeros(3)` → `X = zeros(n)` and
+the description; nothing in a comment or string; a Documentation command link); the help tooltip shows Documentation;
+MATLAB's `getReferencePage` (internal, as `doc.m` uses it; workspace variables must be a `whos` struct) gives
+`…/ref/double.linspace.html` for linspace and `…/ref/zeros.html` for zeros. The derived address
+`help/matlab/ref/linspace.html` is a 404 (checked with curl), hence the click-time query. mathworks.com answers 403
+to Node's own HTTP requests (bot protection), so the extension makes none.
+
 ## Still unverified
 
+0. Editor hover and Documentation link by hand: how the hover looks, and that a click opens the page in the browser
+   (not clicked in tests: it would open the user's browser).
 0. A real mouse drag of a `.mat` file: from Windows Explorer, and from the VS Code Explorer with Shift held (the
    synthetic events above follow VS Code's code, but no real drag was done).
 

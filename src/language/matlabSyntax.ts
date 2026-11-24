@@ -129,3 +129,33 @@ export function maybePathArgument(linePrefix: string): boolean {
   const m = /^\s*([A-Za-z]\w*)\s+(?![=(]|[-+*/^<>&|~]=?\s)(\S*\s+)*\S*$/.exec(linePrefix);
   return !!m && !KEYWORDS.has(m[1]) && !/^(else|end|try|otherwise|break|continue)$/.test(m[1]);
 }
+
+/** The name at `col`, unless it is in a comment or string, a field (s.name) or a number. Pure; unit-tested. */
+export function hoverName(line: string, col: number): { name: string; start: number; end: number } | undefined {
+  // Walk the line once: skip strings ('…' or "…", '' / "" escapes; ' after a name, ) ] } . or ' is transpose) and stop
+  // at a comment.
+  const re = /[A-Za-z_]\w*/y;
+  let prev = '';
+  for (let i = 0; i < line.length;) {
+    const c = line[i];
+    if (c === '%' || (c === '.' && line.startsWith('...', i))) { return undefined; }   // comment or continuation: no names after it
+    if (c === '"' || (c === "'" && !/[\w)\]}.']/.test(prev))) {
+      let j = i + 1;
+      for (; j < line.length; j++) {
+        if (line[j] === c) { if (line[j + 1] === c) { j++; continue; } break; }
+      }
+      if (col >= i && col <= j) { return undefined; }
+      prev = c; i = j + 1; continue;
+    }
+    re.lastIndex = i;
+    const m = /[A-Za-z_]/.test(c) && !/\d/.test(prev) ? re.exec(line) : null;
+    if (m) {
+      const end = i + m[0].length;
+      if (col >= i && col <= end) { return prev === '.' ? undefined : { name: m[0], start: i, end }; }
+      prev = line[end - 1]; i = end; continue;
+    }
+    prev = c.trim() ? c : ' ';
+    i++;
+  }
+  return undefined;
+}

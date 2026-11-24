@@ -123,3 +123,32 @@ import { historyRows } from '../src/commandWindow/webview/historyRows';
   assert.deepStrictEqual(historyRows(['x', 'y', 'x', 'x'], 'x'), [{ text: 'x', count: 1 }, { text: 'x', count: 2 }], 'a repeat hidden by the filter is not merged');
   assert.deepStrictEqual(historyRows(['a1', 'a2', 'a3'], 'a', 2).map(r => r.text), ['a2', 'a3'], 'the newest rows');
 }
+
+// ---- editor hover: which name, and the documentation link ----
+import { hoverName } from '../src/language/matlabSyntax';
+import { docUrlFromWhich } from '../src/language/helpText';
+{
+  const at = (line: string, word: string, k = 1) => hoverName(line, line.indexOf(word) + k)?.name;
+  assert.strictEqual(at('y = zeros(3, n);', 'zeros'), 'zeros');
+  assert.strictEqual(at('y = zeros(3, n);', 'n'), 'n');
+  assert.strictEqual(at("disp('zeros here')", 'zeros'), undefined, 'not in a string');
+  assert.strictEqual(at('s = "plot it"; plot(s)', 'plot('), 'plot', 'after a string');
+  assert.strictEqual(at("a = b'; c = mean(a)", 'mean'), 'mean', "transpose is not a string");
+  assert.strictEqual(at('x = 1; % zeros', 'zeros'), undefined, 'not in a comment');
+  assert.strictEqual(at('v = s.mean + 1', 'mean'), undefined, 'not a field');
+  assert.strictEqual(at('x1 = sum(y)', 'sum'), 'sum', 'after a name ending in a digit');
+  assert.strictEqual(at('t = 1e5 + abs(t)', 'e5', 0), undefined, 'not inside a number');
+  assert.strictEqual(at('t = 1e5 + abs(t)', 'abs'), 'abs');
+  assert.strictEqual(at("fprintf('%d\\n', max(v))", 'max'), 'max', '% inside a string is not a comment');
+  assert.strictEqual(hoverName('x = 1 + 2', 6), undefined, 'not on a name');
+
+  const W = 'C:\\Program Files\\MATLAB\\R2026b\\toolbox';
+  assert.strictEqual(docUrlFromWhich('zeros', `built-in (${W}\\matlab\\elmat\\zeros)`), 'https://www.mathworks.com/help/matlab/ref/zeros.html');
+  assert.strictEqual(docUrlFromWhich('linspace', `${W}\\matlab\\elmat\\linspace.m`), 'https://www.mathworks.com/help/matlab/ref/linspace.html');
+  assert.strictEqual(docUrlFromWhich('fitlm', '/usr/local/MATLAB/R2025a/toolbox/stats/stats/fitlm.m'), 'https://www.mathworks.com/help/stats/ref/fitlm.html');
+  assert.strictEqual(docUrlFromWhich('plot', '/Applications/MATLAB_R2026b.app/toolbox/matlab/graphics/plot.m'), 'https://www.mathworks.com/help/matlab/ref/plot.html');
+  assert.strictEqual(docUrlFromWhich('mean_of', 'C:\\Users\\me\\proj\\mean_of.m'), undefined, 'user function');
+  assert.strictEqual(docUrlFromWhich('helper', `${W}\\matlab\\elmat\\private\\helper.m`), undefined, 'private');
+  assert.strictEqual(docUrlFromWhich('x', 'x is a variable.'), undefined);
+  assert.strictEqual(docUrlFromWhich('f', `${W}\\shared\\x\\f.m`), undefined, 'shared');
+}

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { ConsoleView } from '../consoleView';
 import { OFFICIAL_EXTENSION_ID } from '../locator';
 import { CommandWindowReveal, SessionManager } from '../session';
+import { openDoc } from '../docLink';
 import { loadMatBytes, loadMatFiles } from '../loadMat';
 import { FromWebview, HelpResult, InputMode, TestAction, ToWebview, WebviewSettings } from './protocol';
 
@@ -243,6 +244,9 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
         case 'help':
           this.post({ type: 'help', id: m.id, result: await this.help(m.name) });
           break;
+        case 'openDoc':   // only MathWorks' documentation (the link in the help tooltip)
+          await openDoc(this.session, m.url, m.name);
+          break;
         case 'openFile':
           await this.open(vscode.Uri.file(m.file), m.line);
           break;
@@ -279,7 +283,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
     const info = await this.session.helpFor(name);
     if (!info || (!info.signatures.length && !info.doc)) { return null; }
     const file = info.file;
-    return { name, signatures: info.signatures, doc: info.doc, file };
+    return { name, signatures: info.signatures, doc: info.doc, file, docUrl: info.docUrl };
   }
 
   private async open(uri: vscode.Uri, line?: number): Promise<void> {

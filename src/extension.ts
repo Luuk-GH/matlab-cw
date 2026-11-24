@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { CommandWindowProvider, registerCommandWindow } from './commandWindow/provider';
+import { registerOpenDoc } from './docLink';
+import { registerEditorHover } from './editorHover';
 import { KeepInFront, keepCommandWindowInFront } from './keepInFront';
 import { runFile, runSection, runSelection } from './runInCommandWindow';
 import { ReportedError, SessionManager } from './session';
@@ -34,7 +36,7 @@ export function activate(context: vscode.ExtensionContext): CommandWindowApi {
   });
 
   const keepInFront = keepCommandWindowInFront(s);
-  context.subscriptions.push(s, log, keepInFront);
+  context.subscriptions.push(s, log, keepInFront, registerEditorHover(s), registerOpenDoc(s));
   const commandWindow = registerCommandWindow(context, s, log);
   return { session: s, commandWindow, keepInFront };
 }

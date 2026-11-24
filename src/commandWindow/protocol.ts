@@ -29,6 +29,8 @@ export interface HelpResult {
   doc: string;
   /** Defining file, when it is an m-file. */
   file?: string;
+  /** MathWorks documentation page (functions that ship with MATLAB or a toolbox). */
+  docUrl?: string;
 }
 
 /** Extension -> webview. */
@@ -64,6 +66,7 @@ export type FromWebview =
   | { type: 'signature'; id: number; code: string; offset: number }
   | { type: 'completePaths'; id: number; code: string; offset: number }
   | { type: 'openFile'; file: string; line?: number }
+  | { type: 'openDoc'; url: string; name: string }
   | { type: 'openFunction'; name: string; line?: number }
   | { type: 'clear' }
   | { type: 'testResult'; id: number; result: unknown };

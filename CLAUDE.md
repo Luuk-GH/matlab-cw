@@ -3,7 +3,8 @@ ONLY a better Command Window (webview) for the official MathWorks MATLAB extensi
 and MATLAB Agentic Toolkit for everything else: do not add Workspace views, MCP servers or debuggers. Exception (user's
 request): Run File/Section/Selection in the Command Window (src/runInCommandWindow.ts) on F5/Ctrl+Enter/Shift+Enter,
 because the official Run always uses and focuses its terminal (no setting for that). Likewise src/keepInFront.ts brings the Command Window back
-when the official extension shows its MATLAB terminal at a breakpoint or on input().
+when the official extension shows its MATLAB terminal at a breakpoint or on input(). Also requested: hover help in
+.m editors (src/editorHover.ts, the official LS has no hover) from the same MATLAB help as the Command Window.
 It ATTACHES to the MATLAB the official extension runs (no second MATLAB): user runs shareMATLABSession() (MCP Server
 Toolbox) -> sessionDetails.json {port, certificate, apiKey, pid}; we start our own instance of the official extension's
 language server with --matlabUrl through src/backend/connectorProxy.ts (adds mwapikey, trusts the cert). See RESEARCH.md §8.
