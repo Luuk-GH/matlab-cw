@@ -165,8 +165,10 @@ to Node's own HTTP requests (bot protection), so the extension makes none.
 
 0. Editor hover and Documentation link by hand: how the hover looks, and that a click opens the page in the browser
    (not clicked in tests: it would open the user's browser).
-0. A real mouse drag of a `.mat` file: from Windows Explorer, and from the VS Code Explorer with Shift held (the
-   synthetic events above follow VS Code's code, but no real drag was done).
+0. Real drags, by the user (2026-11-24, 0.2.1): from Windows Explorer works; from the VS Code Explorer with Shift does
+   not. Likely reason (from Chromium's code as remembered, not re-read): Chromium refuses a drop on a frame in another
+   renderer process of the same page, and webviews run in their own process. 0.3.0: a dropped file is found on disk
+   by name, size and date (tested with a synthetic drop of a file in the workspace); not yet tried by hand.
 
 1. The Command Window UI with real MATLAB: everything in sections 1–6.
 2. That the official MATLAB terminal keeps working normally while we are attached (1.5). Seen by the user: output of

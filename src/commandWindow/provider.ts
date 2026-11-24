@@ -4,7 +4,7 @@ import { ConsoleView } from '../consoleView';
 import { OFFICIAL_EXTENSION_ID } from '../locator';
 import { CommandWindowReveal, SessionManager } from '../session';
 import { openDoc } from '../docLink';
-import { loadMatBytes, loadMatFiles } from '../loadMat';
+import { findDroppedFile, loadMatBytes, loadMatFiles } from '../loadMat';
 import { FromWebview, HelpResult, InputMode, TestAction, ToWebview, WebviewSettings } from './protocol';
 
 const HISTORY_KEY = 'matlabCommandWindow.commandWindow.history';
@@ -219,6 +219,9 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
         case 'dropFiles':
           this.loadDropped(m.uris);
           break;
+        case 'dropFileInfo':
+          await this.loadDroppedFromOutside(m.id, m.name, m.size, m.lastModified);
+          break;
         case 'dropFileData':
           if (!(await loadMatBytes(this.session, m.name, bytesOf(m.data)))) { dropHint(); }
           break;
@@ -271,6 +274,17 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
   }
 
   /** .mat files dropped on the Command Window: load each one, as typed (other files are ignored). */
+  /** A .mat file dragged from outside VS Code (no path): load the file itself when it can be found, else offer a copy. */
+  private async loadDroppedFromOutside(id: number, name: string, size: number, lastModified: number): Promise<void> {
+    const found = await findDroppedFile(this.session, name, size, lastModified);
+    if (found) { this.post({ type: 'forgetDrop', id }); loadMatFiles(this.session, [vscode.Uri.file(found)]); return; }
+    const choice = await vscode.window.showInformationMessage(
+      `MATLAB Command Window: VS Code does not pass on where a file dragged from outside VS Code comes from, and no ${name} `
+      + 'with the same size and date is in your workspace, MATLAB\'s current folder, Desktop, Downloads or Documents. '
+      + 'Drag it from the VS Code Explorer (right-click → Load into MATLAB Command Window), or load a copy of it.', 'Load a Copy');
+    this.post(choice ? { type: 'sendDropBytes', id } : { type: 'forgetDrop', id });
+  }
+
   private loadDropped(uris: string[]): void {
     // URIs (uri-list, resourceurls) or plain paths (VS Code's codefiles).
     const files = uris.map(u => { try { return /^[a-z][\w+.-]+:\/\//i.test(u) ? vscode.Uri.parse(u, true) : vscode.Uri.file(u); } catch { return undefined; } })

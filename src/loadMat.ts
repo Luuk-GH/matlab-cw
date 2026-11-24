@@ -17,8 +17,37 @@ export function loadMatFiles(session: SessionManager, uris: vscode.Uri[]): boole
 }
 
 /**
- * A .mat file dropped from outside VS Code (Windows Explorer, a file manager): the webview gets its bytes but not its
- * path, so it is loaded from a temporary copy, which is deleted once load() has run.
+ * A .mat file dragged from outside VS Code (Windows Explorer): the webview gets its name, size and date but not its
+ * path. Look for that file (same name, size and modification time) in the workspace folders, MATLAB's current folder
+ * and the user's Desktop, Downloads and Documents; its path when found.
+ */
+export async function findDroppedFile(session: SessionManager, name: string, size: number, lastModified: number): Promise<string | undefined> {
+  const base = path.basename(name);
+  if (!isMat(base)) { return undefined; }
+  const same = async (file: string) => {
+    try {
+      const st = await fs.promises.stat(file);
+      return st.isFile() && st.size === size && Math.abs(st.mtimeMs - lastModified) < 2000;
+    } catch { return false; }
+  };
+  const home = os.homedir();
+  const pwd = (await session.queryText('pwd', [], true, 2000))?.trim();
+  const folders = [pwd, path.join(home, 'Desktop'), path.join(home, 'Downloads'), path.join(home, 'Documents'),
+    path.join(home, 'OneDrive', 'Desktop'), path.join(home, 'OneDrive', 'Documents')];
+  for (const dir of folders) {
+    if (dir && await same(path.join(dir, base))) { return path.join(dir, base); }
+  }
+  const glob = `**/${base.replace(/[[\]{}*?!]/g, '[$&]')}`;
+  for (const f of vscode.workspace.workspaceFolders ?? []) {
+    const hits = await vscode.workspace.findFiles(new vscode.RelativePattern(f, glob), null, 200);
+    for (const h of hits) { if (await same(h.fsPath)) { return h.fsPath; } }
+  }
+  return undefined;
+}
+
+/**
+ * Not found (findDroppedFile) and the user chose to load a copy: the bytes go to a temporary file, which is deleted
+ * once load() has run.
  */
 export async function loadMatBytes(session: SessionManager, name: string, bytes: Uint8Array): Promise<boolean> {
   const base = path.basename(name);

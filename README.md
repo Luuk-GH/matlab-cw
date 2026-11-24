@@ -36,10 +36,12 @@ The *MATLAB CW* tab in the bottom panel:
 - **File and folder names**, like the MATLAB desktop: in an argument that MATLAB's function signatures declare as a
   file or folder (`load('`, `cd `, `addpath('`, `genpath('`, `readtable('`, `imread('`, …) the pop-up lists the
   matching names in MATLAB's current folder, folders first. Accepting a folder (`data\`) lists what is inside it.
-- **Load a `.mat` file**: drop it on the Command Window from Windows Explorer, or from the VS Code Explorer while
-  holding **Shift** (VS Code keeps its own drags away from webviews otherwise), or right-click it in the VS Code
-  Explorer → *Load into MATLAB Command Window*. A file from outside VS Code is loaded from a temporary copy (the
-  Command Window cannot see its path). Other files are ignored.
+- **Load a `.mat` file**: drop it on the Command Window from Windows Explorer, or right-click it in the VS Code
+  Explorer → *Load into MATLAB Command Window*. Dragging from the VS Code Explorer onto the Command Window is not
+  possible: VS Code and Chromium keep drags inside VS Code out of webviews. A dropped file arrives without its path,
+  so the Command Window looks for it (same name, size and date) in your workspace folders, MATLAB's current folder,
+  Desktop, Downloads and Documents and loads that file; if it is not there, it asks before loading a copy.
+  Other files are ignored.
 - **Signature help** like the editor's: while you type a call, a box shows MATLAB's own forms of the function
   (`plot(Y,LineSpec,options)  1 of 6`), the current argument in bold, and what it is (`y-coordinates`,
   `scalar | vector | matrix`). **Alt+↑/↓** or a click on "1 of 6" shows the other forms, **Esc** closes it. Functions

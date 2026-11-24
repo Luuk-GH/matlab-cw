@@ -49,6 +49,8 @@ export type ToWebview =
   | { type: 'signature'; id: number; result: SignatureHelp | null }
   | { type: 'pathCompletions'; id: number; result: PathCompletion | null }
   | { type: 'focus' }
+  | { type: 'sendDropBytes'; id: number }
+  | { type: 'forgetDrop'; id: number }
   | { type: 'settings'; settings: WebviewSettings }
   | { type: 'test'; id: number; action: TestAction };
 
@@ -60,7 +62,8 @@ export type FromWebview =
   | { type: 'cancelQueued'; id: number }
   | { type: 'dropFiles'; uris: string[] }
   /** A file dropped from outside VS Code: its bytes (the webview cannot see its path). */
-  | { type: 'dropFileData'; name: string; data: Uint8Array }
+  | { type: 'dropFileInfo'; id: number; name: string; size: number; lastModified: number }
+  | { type: 'dropFileData'; id: number; name: string; data: Uint8Array }
   | { type: 'complete'; id: number; prefix: string; code: string; offset: number }
   | { type: 'help'; id: number; name: string }
   | { type: 'signature'; id: number; code: string; offset: number }
@@ -82,7 +85,7 @@ export type TestAction =
   | { kind: 'cancelQueued'; index: number }
   | { kind: 'drop'; type: string; data: string }
   /** A file dragged from outside VS Code (only its bytes, base64), dropped on the input line. */
-  | { kind: 'dropFile'; name: string; base64: string }
+  | { kind: 'dropFile'; name: string; base64: string; lastModified?: number }
   | { kind: 'hoverShow'; word: string }
   | { kind: 'hover'; word: string };
 

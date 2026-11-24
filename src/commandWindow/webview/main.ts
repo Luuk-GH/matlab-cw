@@ -296,8 +296,9 @@ document.addEventListener('mouseup', e => {
   if ((e.target as HTMLElement).closest('a, button, .cm-editor, .cm-tooltip, #sigbox, #histpop')) { return; }
   if (!window.getSelection()?.toString()) { editor.focus(); }
 });
-// Drop .mat files to load them: from Windows Explorer (or another app) directly; from VS Code's own Explorer or an
-// editor tab while holding Shift (VS Code keeps workbench drags away from webviews unless Shift is held).
+// Drop .mat files to load them, from Windows Explorer (or another app). Drags from VS Code's own Explorer never arrive
+// here: VS Code blocks webviews during workbench drags (unless Shift is held), and even then the drop did not arrive
+// when tried by the user (Chromium keeps drags between the workbench and the webview's process apart).
 // The handlers run in the capture phase and stop the events there: VS Code's webview host listens on this window
 // and would otherwise block the webview as soon as files are dragged over it, and CodeMirror would paste the file's
 // bytes into the input line.
@@ -321,14 +322,24 @@ document.addEventListener('drop', e => {
   const dt = e.dataTransfer!;
   const uris = droppedUris(dt);
   if (uris.length || !dt.files.length) { post({ type: 'dropFiles', uris }); return; }
-  // From outside VS Code: only the files' contents are available here (no paths), the extension loads a copy.
+  // From outside VS Code the webview gets no path: the extension looks for the file by name, size and date and loads
+  // that; only when it is not found (and the user agrees) are the bytes sent, to load a copy.
   const mats = [...dt.files].filter(f => /\.mat$/i.test(f.name));
   if (!mats.length) { post({ type: 'dropFiles', uris: [] }); return; }
   for (const f of mats) {
-    f.arrayBuffer().then(b => post({ type: 'dropFileData', name: f.name, data: new Uint8Array(b) }),
-      () => post({ type: 'dropFiles', uris: [] }));
+    const id = ++dropId;
+    droppedFiles.set(id, f);
+    post({ type: 'dropFileInfo', id, name: f.name, size: f.size, lastModified: f.lastModified });
   }
 }, true);
+let dropId = 0;
+const droppedFiles = new Map<number, File>();
+/** The extension found no such file and the user chose to load a copy: send its bytes. */
+function sendDropBytes(id: number): void {
+  const f = droppedFiles.get(id);
+  droppedFiles.delete(id);
+  f?.arrayBuffer().then(b => post({ type: 'dropFileData', id, name: f.name, data: new Uint8Array(b) }), () => undefined);
+}
 
 /** The file URIs in a drop: VS Code's own list (JSON array or lines), else the standard uri-list. */
 function droppedUris(dt: DataTransfer): string[] {
@@ -422,6 +433,17 @@ async function completionSource(ctx: CompletionContext): Promise<CompletionResul
   return { from: line.from + cp.segmentStart, options, validFor: /^\w*$/ };
 }
 
+/** "Documentation": the page MATLAB's doc would open, in the browser (the extension asks MATLAB on the click). */
+function openDocFor(r: HelpResult): void { if (r.docUrl) { post({ type: 'openDoc', url: r.docUrl, name: r.name }); } }
+function docLinkEl(r: HelpResult, className: string): HTMLElement {
+  const d = document.createElement('a');
+  d.className = className;
+  d.textContent = 'Documentation';
+  d.title = r.docUrl ?? '';
+  d.addEventListener('mousedown', e => { e.preventDefault(); openDocFor(r); });
+  return d;
+}
+
 function helpDom(r: HelpResult): HTMLElement {
   const div = document.createElement('div');
   div.className = 'help';
@@ -444,14 +466,7 @@ function helpDom(r: HelpResult): HTMLElement {
     f.addEventListener('mousedown', e => { e.preventDefault(); post({ type: 'openFile', file: r.file! }); });
     div.append(f);
   }
-  if (r.docUrl) {
-    const d = document.createElement('a');
-    d.className = 'link help-docurl';
-    d.textContent = 'Documentation';
-    d.title = r.docUrl;
-    d.addEventListener('mousedown', e => { e.preventDefault(); post({ type: 'openDoc', url: r.docUrl!, name: r.name }); });
-    div.append(d);
-  }
+  if (r.docUrl) { div.append(docLinkEl(r, 'link help-docurl')); }
   return div;
 }
 
@@ -887,8 +902,22 @@ function renderSignature(): void {
     if (p.valueSummary) { const d = document.createElement('div'); d.className = 'sig-values'; d.textContent = p.valueSummary; doc.append(d); }
     sigEl.append(doc);
   }
+  // The function's documentation: a link under the box, and the ⓘ opens it too (from its help, fetched once).
+  const name = f.functionName;
+  void fetchHelp(name).then(r => {
+    if (!r?.docUrl || sigEl.hidden || sigHelp?.forms[sigForm]?.functionName !== name || sigEl.querySelector('.sig-docurl')) { return; }
+    icon.classList.add('clickable');
+    icon.title = 'Documentation';
+    icon.addEventListener('mousedown', e => { e.preventDefault(); openDocFor(r); });
+    sigEl.append(docLinkEl(r, 'link sig-docurl'));
+    placeSignature();
+  });
+  placeSignature();
+}
+
+/** Float the box just above the input line, starting at the function name (kept inside the panel). */
+function placeSignature(): void {
   sigEl.hidden = false;
-  // Float just above the input line, starting at the function name (kept inside the panel).
   const c = editor.coordsAtPos(Math.min(sigAnchor, editor.state.doc.length));
   const inputTop = (document.getElementById('inputRow') ?? editor.dom).getBoundingClientRect().top;
   const width = sigEl.offsetWidth;
@@ -941,6 +970,8 @@ window.addEventListener('message', (e: MessageEvent<ToWebview>) => {
     case 'clear': clearOutput(); break;
     case 'history': history = [...m.entries]; break;
     case 'settings': settings = m.settings; break;
+    case 'sendDropBytes': sendDropBytes(m.id); break;
+    case 'forgetDrop': droppedFiles.delete(m.id); break;
     case 'focus': editor.focus(); break;
     case 'completions': case 'help': case 'signature': case 'pathCompletions': {
       const v = m.type === 'completions' ? m.items : m.result;
@@ -1014,7 +1045,7 @@ async function runTest(id: number, a: TestAction): Promise<void> {
     }
     case 'dropFile': {   // like Windows Explorer: a File (no path) over the input line; VS Code's host listens on window
       const dt = new DataTransfer();
-      dt.items.add(new File([Uint8Array.from(atob(a.base64), c => c.charCodeAt(0))], a.name));
+      dt.items.add(new File([Uint8Array.from(atob(a.base64), c => c.charCodeAt(0))], a.name, a.lastModified ? { lastModified: a.lastModified } : undefined));
       let reachedWindow = 0;
       const count = () => { reachedWindow++; };
       const types = ['dragenter', 'dragover', 'drop'];

@@ -183,6 +183,8 @@ button.toggle:hover { background: var(--vscode-button-secondaryHoverBackground);
   white-space: nowrap;
 }
 .sig-count:hover { opacity: 1; }
+.sig-icon.clickable { cursor: pointer; }
+.sig-docurl { display: block; margin-top: 4px; font-size: 0.9em; }
 .sig-doc {
   border-top: 1px solid var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, rgba(128, 128, 128, 0.5)));
   padding: 3px 8px 4px 28px;

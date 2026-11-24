@@ -203,6 +203,10 @@ export async function run(): Promise<void> {
     check('signature box shows the function form', !!s, (await snap()).signature);
     check('signature box highlights the current argument', s?.signatureActive === 'x2', s?.signatureActive);
     check('signature box explains the argument', /Point interval/.test(s?.signature ?? '') && /pair of scalars/.test(s?.signature ?? ''), s?.signature);
+    if (real) {
+      s = await waitFor(async () => { const x = await snap(); return /Documentation/.test(x.signature) ? x : undefined; }, 5000);
+      check('signature box links to the documentation', !!s, (await snap()).signature);
+    }
     // Esc closes an open completion list first (as in the editor), then the signature box, and only then clears the line.
     await cw.test({ kind: 'key', key: 'Escape' });
     if ((await snap()).signature) { await cw.test({ kind: 'key', key: 'Escape' }); }
@@ -339,22 +343,30 @@ export async function run(): Promise<void> {
         check('the dropped .mat file is loaded into the workspace', !!(await untilText(/^\s*4242$/m)), JSON.stringify((await snap()).text.slice(-200)));
       }
       await untilMode('ready');
-      // From Windows Explorer: only the bytes arrive (no path); VS Code's host must not see the drag (it would block
-      // the webview) and CodeMirror must not paste the bytes; the extension loads a temporary copy and deletes it.
+      // From Windows Explorer: the webview gets the file but not its path; VS Code's host must not see the drag (it
+      // would block the webview) and CodeMirror must not paste the bytes. The extension finds the file itself (same
+      // name, size and date in the workspace) and loads it, no copy.
       if (real) { await typeLine('clear mcwDrop'); await untilMode('ready'); }
-      const bytes = real ? fs.readFileSync(mat) : Buffer.from('MATLAB 5.0 MAT-file (fake)');
-      const r = await cw.test({ kind: 'dropFile', name: 'mcw_drop_bytes.mat', base64: bytes.toString('base64') }) as { reachedWindow: number; inputChanged: boolean };
+      const onDisk = path.join(dir, 'mcw_drop_bytes.mat');
+      fs.writeFileSync(onDisk, real ? fs.readFileSync(mat) : Buffer.from('MATLAB 5.0 MAT-file (fake)'));
+      const bytes = fs.readFileSync(onDisk);
+      const r = await cw.test({ kind: 'dropFile', name: 'mcw_drop_bytes.mat', base64: bytes.toString('base64'), lastModified: fs.statSync(onDisk).mtimeMs }) as { reachedWindow: number; inputChanged: boolean };
       check('a file dragged from outside VS Code is kept from VS Code and the input line', r?.reachedWindow === 0 && !r.inputChanged, JSON.stringify(r));
-      s = await untilText(/^>> load\('([^\n]*mcw-drop-[^\n]*mcw_drop_bytes\.mat)'\)$/m, 5000);
-      check('dropping a file from outside VS Code loads a copy of it', !!s, JSON.stringify((await snap()).text.slice(-300)));
+      s = await untilText(/^>> load\('[^\n]*mcw_drop_bytes\.mat'\)$/m, 8000);
+      const loaded = /^>> load\('([^\n]*mcw_drop_bytes\.mat)'\)$/m.exec(s?.text ?? '')?.[1]?.replace(/''/g, "'");
+      check('dropping a file from outside VS Code loads the file itself (found by name, size and date)', !!loaded && path.resolve(loaded).toLowerCase() === path.resolve(onDisk).toLowerCase(), loaded ?? JSON.stringify((await snap()).text.slice(-300)));
       await untilMode('ready');
-      const copy = /^>> load\('([^\n]*mcw-drop-[^\n]*mcw_drop_bytes\.mat)'\)$/m.exec(s?.text ?? '')?.[1]?.replace(/''/g, "'");
-      check('the temporary copy is deleted after load()', !!copy && !!(await waitFor(() => !fs.existsSync(path.dirname(copy)), 3000)), copy);
       if (real) {
         await typeLine('disp(mcwDrop)');
-        check('the copy is loaded into the workspace', !!(await untilText(/^\s*4242$[\s\S]*^\s*4242$/m)), JSON.stringify((await snap()).text.slice(-200)));
+        check('the dropped file is loaded into the workspace', !!(await untilText(/^\s*4242$[\s\S]*^\s*4242$/m)), JSON.stringify((await snap()).text.slice(-200)));
         await untilMode('ready');
       }
+      // A file that is nowhere to be found: nothing is loaded without asking (VS Code shows "Load a Copy").
+      const before = (await snap()).text;
+      await cw.test({ kind: 'dropFile', name: 'mcw_nowhere.mat', base64: Buffer.from('x').toString('base64'), lastModified: 1 });
+      await sleep(2500);
+      check('a file that cannot be found is not loaded without asking', !/load\('[^\n]*mcw_nowhere\.mat'\)/.test((await snap()).text.slice(before.length - 50)));
+      try { fs.unlinkSync(onDisk); } catch { /* gone */ }
       // Explorer: right-click a .mat file -> Load into MATLAB Command Window.
       await vscode.commands.executeCommand('matlabCommandWindow.loadMatFile', vscode.Uri.file(mat), [vscode.Uri.file(mat)]);
       s = await waitFor(async () => { const x = await snap(); return (x.text.match(/^>> load\('[^\n]*mcw_drop_test\.mat'\)$/gm) ?? []).length === 2 ? x : undefined; }, 5000);
