@@ -81,7 +81,7 @@ while (-not (Test-Path $stop)) {
 
 const codeExe = process.env.VSCODE_EXE ?? path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Microsoft VS Code', 'Code.exe');
 // MCW_IT_RESULT turns on the webview's test hooks (provider.ts), which the demo drives.
-const env = { ...process.env, MCW_DEMO_DIR: marks, MCW_IT_RESULT: path.join(base, 'result.txt'), MCW_LANGUAGE_SERVER: path.join(extDir, official, 'server', 'out', 'index.js') };
+const env = { ...process.env, MCW_DEMO_DIR: marks, MCW_IT_RESULT: path.join(base, 'result.txt'), MCW_ANY_MATLAB: '1', MCW_LANGUAGE_SERVER: path.join(extDir, official, 'server', 'out', 'index.js') };
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.MCW_SESSION_FILE;
 const child = spawn(codeExe, [

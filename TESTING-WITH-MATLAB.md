@@ -95,7 +95,7 @@ If S1 (attach) fails, stop here and send the files: the attach route itself need
 ## 6. Robustness
 
 - [ ] **6.1** Close VS Code while connected → MATLAB of the official extension is unaffected until it closes itself; no leftover `node`/language-server processes after ~10 s.
-- [ ] **6.2** A MATLAB desktop (not the extension's) that ran `shareMATLABSession()` → our window connects to it (the most recently shared MATLAB wins).
+- [x] **6.2** A MATLAB not started by this window's MATLAB extension (a MATLAB desktop, an MCP server's MATLAB, another VS Code window) that ran `shareMATLABSession()` → refused, with who started it. Verified 2026-11-24: a second VS Code window refused the first window's MATLAB ("started by Code.exe (process …)", the other window's language server), and the integration test refuses its shared MATLAB without `MCW_ANY_MATLAB`.
 - [ ] **6.3** Restricted Mode (untrusted folder) → "needs a trusted workspace", nothing connects.
 - [ ] **6.4** Folder with spaces and non-ASCII characters → links still open.
 - [ ] **6.5** `figure; plot(1:10)` from our window → figure appears; prompt returns.
@@ -136,7 +136,18 @@ Added 2026-11-22 (52 checks, 2 runs): the Command Window comes back when a MATLA
 command asks for input() (the MATLAB extension's terminal runs matlab.openCommandWindow on the INPUT state;
 simulated, since that extension is not loaded in the test window).
 
+Added 2026-11-24 (66 checks): queued commands shown (and × / Stop drop them), a dropped `.mat` file is loaded
+(simulated drop event), file/folder completion (`readtable('err` → `error_demo.m`), the Command History pop-up (filter,
+`2x`, Shift+Up, Enter runs in order, Right puts on the line, setting off → inline recall), long output not collapsed,
+refusing a MATLAB not started in this window. Checked by hand in a VS Code window: the Workspace view moves beside the
+Command Window, the cursor blinks (it was a 0.8 px black line, invisible on dark themes), the refusal message. The
+parent chain of the MATLAB extension's MATLAB on Windows: MATLAB.exe ← MATLAB.exe ← matlab.exe ← language server
+(Code.exe as node) ← extension host. MATLAB's file/folder choices recorded in `test/fixtures/pathCompletions-R2026b.json`.
+
 ## Still unverified
+
+0. A real mouse drag of a `.mat` file from the VS Code Explorer and from Windows Explorer (only a simulated drop is
+   tested; VS Code may keep drops from outside VS Code to itself).
 
 1. The Command Window UI with real MATLAB: everything in sections 1–6.
 2. That the official MATLAB terminal keeps working normally while we are attached (1.5). Seen by the user: output of

@@ -3,7 +3,7 @@
   "displayName": "MATLAB Command Window",
   "icon": "media/icon.png",
   "description": "A better Command Window for the official MATLAB extension: HTML output with clickable error links, collapsible output, completion pop-up, help tooltips and Stop, attached to the MATLAB the official extension already runs (no second MATLAB). Not affiliated with or endorsed by MathWorks.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "local",
   "license": "MIT",
   "private": true,
@@ -139,6 +139,21 @@
           "default": "",
           "scope": "machine-overridable",
           "markdownDescription": "The MATLAB language server used to connect (`.../server/out/index.js`). Leave empty to use the one inside the installed official MATLAB extension (`MathWorks.language-matlab`)."
+        },
+        "matlabCommandWindow.collapseLongOutput": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Collapse the output of a command to a few lines once it finishes when it is longer than 40 lines, with a button to show it all."
+        },
+        "matlabCommandWindow.workspaceBesideCommandWindow": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Put the MATLAB extension's **Workspace** view beside the Command Window in the panel, the first time the Command Window opens. Afterwards you can move it anywhere; VS Code remembers. Turn off to move it back to the MATLAB side bar."
+        },
+        "matlabCommandWindow.historyPopup": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "**Up** opens the Command History pop-up, as in MATLAB: arrows move, **Enter** runs, **Right** puts the command on the line, **Shift+Up/Down** selects several. Turn off to recall commands on the input line instead."
         },
         "matlabCommandWindow.runInCommandWindow": {
           "type": "boolean",

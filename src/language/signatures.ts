@@ -70,3 +70,67 @@ export function parseSignatures(raw: unknown): SignatureHelp | undefined {
   }
   return forms.length ? { forms } : undefined;
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// File and folder completion, like the MATLAB desktop's: for an argument that functionSignatures.json declares as a
+// file or folder (load, addpath, cd, genpath, readtable, imread, ...), MATLAB lists the matching names in the current
+// folder (and files on the path) as the argument's `widgetData.choices`.
+// [verified, R2026b] choices come as a struct array, either {mwdata:[{completion, displayString?, matchType}, ...]}
+// or column-wise {mwdata:{completion:[...], displayString:[...], matchType:[...]}}. matchType 'folder' | 'filename' |
+// 'pathItem' (a file on the path). `completion` replaces the argument from its bounds.left to the cursor: "'dist\"
+// (a folder: no closing quote, so the user goes on into it) or "'data.mat'" (a file, closed). The argument's `bounds`
+// are offsets in the line.
+
+export interface PathChoice {
+  /** Shown in the list: "dist\", "data.mat". */
+  label: string;
+  /** Replaces the line from `from` to the cursor. */
+  insert: string;
+  folder: boolean;
+}
+
+export interface PathCompletion { from: number; choices: PathChoice[]; }
+
+const PATH_TYPES = new Set(['folder', 'filename', 'pathItem']);
+
+/** A struct array as rows: [{a, b}, ...] from either encoding. */
+function rows(v: unknown): Record<string, unknown>[] {
+  const md = v && typeof v === 'object' && 'mwdata' in (v as object) ? (v as { mwdata: unknown }).mwdata : v;
+  if (md && typeof md === 'object' && !Array.isArray(md)) {
+    const o = md as Record<string, unknown>;
+    const cols = Object.values(o).filter(Array.isArray) as unknown[][];
+    if (cols.length && cols.length === Object.keys(o).length) {   // column-wise: every field is an array
+      return cols[0].map((_, i) => Object.fromEntries(Object.entries(o).map(([k, c]) => [k, (c as unknown[])[i]])));
+    }
+  }
+  return items(md);
+}
+
+/** The file/folder choices MATLAB offers for the argument at the cursor; undefined when it is not such an argument. */
+export function parsePathChoices(raw: unknown): PathCompletion | undefined {
+  const top = items(raw)[0];
+  if (!top) { return undefined; }
+  let from: number | undefined;
+  const choices: PathChoice[] = [];
+  const seen = new Set<string>();
+  for (const sig of rows(top.signatures)) {
+    for (const arg of rows(sig.inputArguments)) {
+      if (arg.status !== 'presenting') { continue; }
+      const widget = arg.widgetData as Record<string, unknown> | undefined;
+      const list = rows(widget?.choices).filter(c => typeof c.completion === 'string' && PATH_TYPES.has(String(c.matchType)));
+      const left = Number((rows(arg.bounds)[0] as { left?: unknown } | undefined)?.left);
+      if (!list.length || !Number.isFinite(left)) { continue; }
+      if (from === undefined) { from = left; } else if (left !== from) { continue; }
+      for (const c of list) {
+        const insert = String(c.completion);
+        if (seen.has(insert)) { continue; }
+        seen.add(insert);
+        const shown = str(c.displayString) ?? insert;
+        choices.push({ label: shown.replace(/^["']|["']$/g, ''), insert, folder: c.matchType === 'folder' });
+      }
+    }
+  }
+  if (from === undefined || !choices.length) { return undefined; }
+  // Folders first, like MATLAB; each group in MATLAB's order.
+  return { from, choices: [...choices.filter(c => c.folder), ...choices.filter(c => !c.folder)] };
+}

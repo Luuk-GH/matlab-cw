@@ -121,4 +121,16 @@ function make(): { q: CommandQueue<J>; sent: string[] } {
   assert.deepStrictEqual(sent, ['a', 'b']);
 }
 
+// removeWaiting: drops one waiting job, never the one in flight.
+{
+  const { q, sent } = make();
+  q.prompt();
+  q.push(job('a')); q.push(job('b')); q.push(job('c'));
+  assert.strictEqual(q.removeWaiting(j => j.id === 'a'), undefined, 'a was sent already');
+  assert.strictEqual(q.removeWaiting(j => j.id === 'b')?.id, 'b');
+  assert.strictEqual(q.size, 2);
+  q.prompt();
+  assert.deepStrictEqual(sent, ['a', 'c']);
+}
+
 console.log('commandQueue: all assertions passed');

@@ -1,10 +1,17 @@
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { ConsoleView } from '../consoleView';
-import { CommandWindowReveal, SessionManager } from '../session';
-import { FromWebview, HelpResult, InputMode, TestAction, ToWebview } from './protocol';
+import { OFFICIAL_EXTENSION_ID } from '../locator';
+import { CommandWindowReveal, matlabString, SessionManager } from '../session';
+import { FromWebview, HelpResult, InputMode, TestAction, ToWebview, WebviewSettings } from './protocol';
 
 const HISTORY_KEY = 'matlabCommandWindow.commandWindow.history';
+/** The MATLAB extension's Workspace view and its own container ([code] MathWorks.language-matlab 1.3.16 package.json). */
+const WORKSPACE_VIEW = 'workspaceBrowserSidebarView';
+const WORKSPACE_HOME = 'workbench.view.extension.matlabSidebar';
+const PANEL_CONTAINER = 'workbench.view.extension.matlabCommandWindowPanel';   // VS Code's id for our container
+/** Set once the Workspace view was put beside the Command Window (it is not moved again: the user may move it away). */
+const WORKSPACE_PLACED_KEY = 'matlabCommandWindow.workspacePlaced';
 const HISTORY_MAX = 1000;
 /** Rendered messages kept for replay when the webview is (re)created: about this many characters. */
 const REPLAY_CHARS = 2_000_000;
@@ -34,6 +41,14 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
     this.history = context.globalState.get<string[]>(HISTORY_KEY, []);
     this.disposables.push(session.addView(this));
     session.registerCommandWindow(this);
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('matlabCommandWindow')) { this.post({ type: 'settings', settings: webviewSettings() }); }
+      if (e.affectsConfiguration('matlabCommandWindow.workspaceBesideCommandWindow')) {
+        const on = vscode.workspace.getConfiguration('matlabCommandWindow').get<boolean>('workspaceBesideCommandWindow', true);
+        void this.context.globalState.update(WORKSPACE_PLACED_KEY, on);
+        this.moveWorkspace(on ? PANEL_CONTAINER : WORKSPACE_HOME);
+      }
+    }));
   }
 
   dispose(): void { this.disposables.forEach(d => d.dispose()); }
@@ -53,6 +68,27 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
     view.onDidDispose(() => { if (this.view === view) { this.view = undefined; this.ready = false; } });
     view.onDidChangeVisibility(() => { if (view.visible) { this.post({ type: 'focus' }); this.autoConnect(); } });
     this.autoConnect();
+    this.placeWorkspace();
+  }
+
+  /**
+   * The first time the Command Window opens, put the MATLAB extension's Workspace view beside it in the panel
+   * (setting workspaceBesideCommandWindow). VS Code does not let the user drop that view onto the Command Window's
+   * container (only into the Terminal's), so we move it with VS Code's vscode.moveViews command. Only once: VS Code
+   * remembers where views are, and a user who moves it elsewhere afterwards keeps it there.
+   */
+  private placeWorkspace(): void {
+    if (this.context.globalState.get<boolean>(WORKSPACE_PLACED_KEY)) { return; }
+    if (!vscode.workspace.getConfiguration('matlabCommandWindow').get<boolean>('workspaceBesideCommandWindow', true)) { return; }
+    if (!vscode.extensions.getExtension(OFFICIAL_EXTENSION_ID)) { return; }
+    void this.context.globalState.update(WORKSPACE_PLACED_KEY, true);
+    this.moveWorkspace(PANEL_CONTAINER);
+  }
+
+  private moveWorkspace(destinationId: string): void {
+    void Promise.resolve(vscode.commands.executeCommand('vscode.moveViews', { viewIds: [WORKSPACE_VIEW], destinationId })).then(
+      () => this.log.info(`moved the MATLAB Workspace view to ${destinationId}`),
+      e => this.log.warn(`could not move the MATLAB Workspace view: ${e}`));
   }
 
   // ---------- CommandWindowReveal ----------
@@ -83,6 +119,10 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
   echoCommand(display: string): void {
     this.record({ type: 'echo', text: display, prompt: this.basePrompt });
   }
+
+  queueCommand(id: number, display: string): void { this.record({ type: 'queued', id, text: display, prompt: this.basePrompt }); }
+
+  unqueueCommand(id: number): void { this.record({ type: 'unqueued', id }); }
 
   writeOutput(text: string, stream: 'out' | 'err'): void { this.record({ type: 'output', text, stream }); }
 
@@ -150,7 +190,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
   }
 
   private addHistory(line: string): void {
-    if (!line.trim() || this.history[this.history.length - 1] === line) { return; }
+    if (!line.trim()) { return; }   // repeats are kept: the Command History pop-up shows them as "2x"
     this.history.push(line);
     if (this.history.length > HISTORY_MAX) { this.history.splice(0, this.history.length - HISTORY_MAX); }
     void this.context.globalState.update(HISTORY_KEY, this.history);
@@ -162,6 +202,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
       switch (m.type) {
         case 'ready':
           this.ready = true;
+          this.post({ type: 'settings', settings: webviewSettings() });
           this.post({ type: 'history', entries: this.history });
           for (const r of this.replay) { this.post(r); }
           this.post({ type: 'mode', mode: this.mode, prompt: this.inputPrompt });
@@ -173,6 +214,12 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
         case 'stop':
           await this.session.interrupt();
           break;
+        case 'dropFiles':
+          await this.loadDropped(m.uris);
+          break;
+        case 'cancelQueued':
+          this.session.cancelQueued(m.id);
+          break;
         case 'complete': {
           const ok = this.mode === 'ready' || this.mode === 'debug';
           const r = ok ? await this.session.completeNames(m.prefix, m.code, m.offset) : undefined;
@@ -182,6 +229,11 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
         case 'signature': {
           const ok = this.mode === 'ready' || this.mode === 'debug';
           this.post({ type: 'signature', id: m.id, result: (ok ? await this.session.signatureFor(m.code, m.offset) : undefined) ?? null });
+          break;
+        }
+        case 'completePaths': {
+          const ok = this.mode === 'ready' || this.mode === 'debug';
+          this.post({ type: 'pathCompletions', id: m.id, result: (ok ? await this.session.completePaths(m.code, m.offset) : undefined) ?? null });
           break;
         }
         case 'help':
@@ -208,6 +260,17 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
       this.log.error(`Command Window: ${(err as Error).stack ?? err}`);
       if (m.type === 'submit' && !(err as { reported?: boolean }).reported) { void vscode.window.showErrorMessage(`MATLAB Command Window: ${(err as Error).message}`); }
     }
+  }
+
+  /** .mat files dropped on the Command Window: load each one, as typed (other files are ignored). */
+  private async loadDropped(uris: string[]): Promise<void> {
+    const files = uris.map(u => { try { return vscode.Uri.parse(u, true); } catch { return undefined; } })
+      .filter((u): u is vscode.Uri => !!u && u.scheme === 'file' && /\.mat$/i.test(u.fsPath));
+    if (!files.length) {
+      void vscode.window.setStatusBarMessage('MATLAB Command Window: drop .mat files to load them', 4000);
+      return;
+    }
+    for (const f of files) { void this.session.execute(`load(${matlabString(f.fsPath)})`).catch(() => undefined); }
   }
 
   private async help(name: string): Promise<HelpResult | null> {
@@ -242,6 +305,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
 </head>
 <body data-test-hooks="${testHooks}" data-nonce="${nonce}">
 <div id="output" role="log" aria-live="polite" tabindex="-1"></div>
+<div id="queue" hidden></div>
 <div id="hint" aria-live="polite"></div>
 <div id="sigbox" role="tooltip" hidden></div>
 <div id="inputRow">
@@ -253,6 +317,11 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
 </body>
 </html>`;
   }
+}
+
+function webviewSettings(): WebviewSettings {
+  const c = vscode.workspace.getConfiguration('matlabCommandWindow');
+  return { collapseLongOutput: c.get<boolean>('collapseLongOutput', false), historyPopup: c.get<boolean>('historyPopup', true) };
 }
 
 /** Register the Command Window view and its commands. */

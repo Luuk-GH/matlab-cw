@@ -29,7 +29,7 @@ const codeCli = path.join(codeDir, 'bin', 'code.cmd');
 const sessionFile = path.join(base, 'session', 'sessionDetails.json');
 const connector = spawn(process.execPath, [path.join(root, 'test', 'fake', 'fakeConnector.js'), sessionFile], { stdio: 'inherit' });
 for (let i = 0; i < 50 && !fs.existsSync(sessionFile); i++) { await new Promise(r => setTimeout(r, 100)); }
-const env = { ...process.env, MCW_SESSION_FILE: sessionFile, MCW_IT_RESULT: resultFile, MCW_LANGUAGE_SERVER: path.join(root, 'test', 'fake', 'fakeLanguageServer.js'), MCW_FAKE_STARTUP_MS: '200' };
+const env = { ...process.env, MCW_SESSION_FILE: sessionFile, MCW_IT_RESULT: resultFile, MCW_ANY_MATLAB: '1', MCW_LANGUAGE_SERVER: path.join(root, 'test', 'fake', 'fakeLanguageServer.js'), MCW_FAKE_STARTUP_MS: '200' };
 delete env.ELECTRON_RUN_AS_NODE;
 
 // code.cmd is a batch file, so it needs a shell; quote everything (paths contain spaces).

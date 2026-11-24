@@ -5,6 +5,10 @@
 export interface ConsoleView {
   /** A command the session runs on the user's behalf (shown as `>> code`). */
   echoCommand(display: string): void;
+  /** A command waits behind the running one (shown dimmed until it starts or is cancelled). */
+  queueCommand(id: number, display: string): void;
+  /** A queued command started (its echoCommand follows) or was cancelled. */
+  unqueueCommand(id: number): void;
   /** MATLAB output. */
   writeOutput(text: string, stream: 'out' | 'err'): void;
   /** MATLAB waits for the next command (`debug`: at K>>). */

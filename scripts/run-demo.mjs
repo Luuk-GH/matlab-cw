@@ -66,7 +66,7 @@ $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
 `);
 
 const codeExe = process.env.VSCODE_EXE ?? path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Microsoft VS Code', 'Code.exe');
-const env = { ...process.env, MCW_IT_RESULT: path.join(base, 'result.txt'), MCW_DEMO_DIR: marks,
+const env = { ...process.env, MCW_IT_RESULT: path.join(base, 'result.txt'), MCW_ANY_MATLAB: '1', MCW_DEMO_DIR: marks,
   MCW_LANGUAGE_SERVER: path.join(extDir, official, 'server', 'out', 'index.js') };
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.MCW_SESSION_FILE;

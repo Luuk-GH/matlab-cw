@@ -9,9 +9,17 @@ export type InputMode =
   | 'busy'      // a command runs: Enter queues the next one
   | 'exited';   // no session: Enter starts one and runs the command
 
+/** Settings the webview needs (sent on load and when they change). */
+export interface WebviewSettings {
+  /** matlabCommandWindow.collapseLongOutput: collapse long output once its command finishes. */
+  collapseLongOutput: boolean;
+  /** matlabCommandWindow.historyPopup: Up opens the Command History pop-up (else Up recalls inline). */
+  historyPopup: boolean;
+}
+
 export interface CompletionItem { label: string; kind: 'v' | 'f' | 'k' | 'F'; }
-export type { SignatureHelp, SignatureForm, SignatureParam } from '../language/signatures';
-import type { SignatureHelp } from '../language/signatures';
+export type { PathChoice, PathCompletion, SignatureHelp, SignatureForm, SignatureParam } from '../language/signatures';
+import type { PathCompletion, SignatureHelp } from '../language/signatures';
 
 export interface HelpResult {
   name: string;
@@ -30,12 +38,16 @@ export type ToWebview =
   | { type: 'info'; text: string }
   | { type: 'mode'; mode: InputMode; prompt?: string }
   | { type: 'echoInput'; text: string; prompt?: string }
+  | { type: 'queued'; id: number; text: string; prompt: string }
+  | { type: 'unqueued'; id: number }
   | { type: 'clear' }
   | { type: 'history'; entries: string[] }
   | { type: 'completions'; id: number; items: CompletionItem[] | null }
   | { type: 'help'; id: number; result: HelpResult | null }
   | { type: 'signature'; id: number; result: SignatureHelp | null }
+  | { type: 'pathCompletions'; id: number; result: PathCompletion | null }
   | { type: 'focus' }
+  | { type: 'settings'; settings: WebviewSettings }
   | { type: 'test'; id: number; action: TestAction };
 
 /** Webview -> extension. */
@@ -43,9 +55,12 @@ export type FromWebview =
   | { type: 'ready' }
   | { type: 'submit'; code: string }
   | { type: 'stop' }
+  | { type: 'cancelQueued'; id: number }
+  | { type: 'dropFiles'; uris: string[] }
   | { type: 'complete'; id: number; prefix: string; code: string; offset: number }
   | { type: 'help'; id: number; name: string }
   | { type: 'signature'; id: number; code: string; offset: number }
+  | { type: 'completePaths'; id: number; code: string; offset: number }
   | { type: 'openFile'; file: string; line?: number }
   | { type: 'openFunction'; name: string; line?: number }
   | { type: 'clear' }
@@ -55,10 +70,12 @@ export type FromWebview =
 export type TestAction =
   | { kind: 'snapshot' }
   | { kind: 'type'; text: string }
-  | { kind: 'key'; key: 'Enter' | 'Shift-Enter' | 'ArrowUp' | 'ArrowDown' | 'Escape' | 'Tab' | 'Ctrl-Space' | 'Alt-ArrowDown' }
+  | { kind: 'key'; key: 'Enter' | 'Shift-Enter' | 'ArrowUp' | 'ArrowDown' | 'Escape' | 'Tab' | 'Ctrl-Space' | 'Alt-ArrowDown' | 'Shift-ArrowUp' | 'ArrowRight' }
   | { kind: 'clickLink'; index: number }
   | { kind: 'toggleCollapse'; index: number }
   | { kind: 'clickStop' }
+  | { kind: 'cancelQueued'; index: number }
+  | { kind: 'drop'; type: string; data: string }
   | { kind: 'hoverShow'; word: string }
   | { kind: 'hover'; word: string };
 
@@ -76,5 +93,8 @@ export interface Snapshot {
   signature: string;       // text of the signature box ('' when closed)
   signatureActive: string; // the highlighted argument in the signature box
   stopVisible: boolean;
+  queued: string[];        // commands shown as waiting
+  historyPopup: string[];  // rows of the open Command History pop-up ("2x cmd" for repeats), [] when closed
+  historySelected: string[]; // its selected commands
   highlighted: string[];   // token classes used in the input line (syntax highlighting)
 }

@@ -65,3 +65,15 @@ export function linkTarget(href: string): Omit<LinkHit, 'start' | 'end'> | undef
   }
   return undefined;
 }
+
+/** run() (Run File runs scripts with it) and the extension's own helpers: frames that are noise for the user. */
+const HELPER = String.raw`(?:run|mcw\.\w+) \(line \d+\)`;
+// [verified, R2026b] an error frame is followed by its code line and a ^^^ line: hide those too (never a next frame).
+const ERROR_FRAME = new RegExp(String.raw`^Error in ${HELPER}(?:\n|$)(?:(?!Error in |Error using |[ \t]*(?:> )?In )[^\n]*\n(?:[ \t]*\^+[ \t]*(?:\n|$))?)?`, 'gm');
+// A warning's backtrace: "> In f (line 3)" for the first frame, "  In g (line 9)" for the next ones (no code lines).
+const WARNING_FRAME = new RegExp(String.raw`^[ \t]*(?:> )?In ${HELPER}[ \t]*(?:\n|$)`, 'gm');
+
+/** Remove the stack frames of run() and of the extension's helpers from error output (text with \n line ends). */
+export function hideHelperFrames(text: string): string {
+  return text.replace(ERROR_FRAME, '').replace(WARNING_FRAME, '');
+}

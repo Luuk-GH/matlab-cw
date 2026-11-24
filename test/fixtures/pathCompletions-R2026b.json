@@ -1,0 +1,2121 @@
+{
+ "load('": [
+  {
+   "signatures": {
+    "mwdata": {
+     "bounds": [
+      {
+       "left": 0,
+       "right": 6
+      },
+      {
+       "left": 0,
+       "right": 6
+      },
+      {
+       "left": 0,
+       "right": 6
+      }
+     ],
+     "functionName": [
+      "load",
+      "load",
+      "load"
+     ],
+     "inputArguments": [
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "'CHANGELOG.md'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'CLAUDE.md'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'dist\\",
+             "displayString": "'dist\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'docs\\",
+             "displayString": "'docs\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'esbuild.mjs'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'LICENSE'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'matlab-command-window-0.1.0.vsix'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'matlab-command-window-0.1.0.zip'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'media\\",
+             "displayString": "'media\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'node_modules\\",
+             "displayString": "'node_modules\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'package-lock.json'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'package.json'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'README.md'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'RESEARCH.md'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'scripts\\",
+             "displayString": "'scripts\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'spike\\",
+             "displayString": "'spike\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'src\\",
+             "displayString": "'src\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'test\\",
+             "displayString": "'test\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'TESTING-WITH-MATLAB.md'",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'tsconfig.json'",
+             "matchType": "filename",
+             "originalSignature": 1
+            }
+           ],
+           "mwsize": [
+            20,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "variables",
+         "purpose": "Names of variables to load",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "'CHANGELOG.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'CLAUDE.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'dist\\",
+             "displayString": "'dist\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'docs\\",
+             "displayString": "'docs\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'esbuild.mjs'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'LICENSE'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'matlab-command-window-0.1.0.vsix'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'matlab-command-window-0.1.0.zip'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'media\\",
+             "displayString": "'media\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'node_modules\\",
+             "displayString": "'node_modules\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'package-lock.json'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'package.json'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'README.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'RESEARCH.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'scripts\\",
+             "displayString": "'scripts\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'spike\\",
+             "displayString": "'spike\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'src\\",
+             "displayString": "'src\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'test\\",
+             "displayString": "'test\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'TESTING-WITH-MATLAB.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'tsconfig.json'",
+             "matchType": "filename"
+            }
+           ],
+           "mwsize": [
+            20,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "'-mat'",
+         "trailingPunctuation": ",",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "variables",
+         "purpose": "Names of variables to load",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "'CHANGELOG.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'CLAUDE.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'dist\\",
+             "displayString": "'dist\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'docs\\",
+             "displayString": "'docs\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'esbuild.mjs'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'LICENSE'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'matlab-command-window-0.1.0.vsix'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'matlab-command-window-0.1.0.zip'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'media\\",
+             "displayString": "'media\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'node_modules\\",
+             "displayString": "'node_modules\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'package-lock.json'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'package.json'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'README.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'RESEARCH.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'scripts\\",
+             "displayString": "'scripts\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'spike\\",
+             "displayString": "'spike\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'src\\",
+             "displayString": "'src\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'test\\",
+             "displayString": "'test\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'TESTING-WITH-MATLAB.md'",
+             "matchType": "filename"
+            },
+            {
+             "completion": "'tsconfig.json'",
+             "matchType": "filename"
+            }
+           ],
+           "mwsize": [
+            20,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 5,
+          "right": 6
+         }
+        },
+        {
+         "kind": "required",
+         "name": "'-ascii'",
+         "widgetData": {
+          "choices": {
+           "completion": "'-ascii'",
+           "matchType": "literal"
+          }
+         },
+         "widgetType": "completion"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      }
+     ],
+     "outputArguments": [
+      {
+       "name": "S",
+       "widgetType": "none"
+      },
+      {
+       "name": "S",
+       "widgetType": "none"
+      },
+      {
+       "name": "S",
+       "widgetType": "none"
+      }
+     ],
+     "promotion": [
+      "suggested",
+      "primary",
+      "primary"
+     ],
+     "score": [
+      0,
+      0,
+      0
+     ],
+     "signatureSource": [
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json"
+     ],
+     "status": [
+      "presenting",
+      "presenting",
+      "presenting"
+     ],
+     "wsbounds": [
+      {
+       "left": 0,
+       "right": 6
+      },
+      {
+       "left": 0,
+       "right": 6
+      },
+      {
+       "left": 0,
+       "right": 6
+      }
+     ]
+    },
+    "mwsize": [
+     3,
+     1
+    ],
+    "mwtype": "struct"
+   }
+  }
+ ],
+ "addpath('": [
+  {
+   "signatures": {
+    "bounds": {
+     "left": 0,
+     "right": 9
+    },
+    "functionName": "addpath",
+    "inputArguments": {
+     "mwdata": [
+      {
+       "bounds": {
+        "left": 8,
+        "right": 9
+       },
+       "kind": "required",
+       "name": "folderName",
+       "purpose": "Folder names to add to search path",
+       "status": "presenting",
+       "trailingPunctuation": ",",
+       "value": "'",
+       "valueSummary": "character vectors | string scalars",
+       "widgetData": {
+        "choices": {
+         "mwdata": {
+          "completion": [
+           "'dist\\",
+           "'docs\\",
+           "'media\\",
+           "'node_modules\\",
+           "'scripts\\",
+           "'spike\\",
+           "'src\\",
+           "'test\\"
+          ],
+          "displayString": [
+           "dist\\",
+           "docs\\",
+           "media\\",
+           "node_modules\\",
+           "scripts\\",
+           "spike\\",
+           "src\\",
+           "test\\"
+          ],
+          "matchType": [
+           "folder",
+           "folder",
+           "folder",
+           "folder",
+           "folder",
+           "folder",
+           "folder",
+           "folder"
+          ]
+         },
+         "mwsize": [
+          8,
+          1
+         ],
+         "mwtype": "struct"
+        }
+       },
+       "widgetType": "completion",
+       "wsbounds": {
+        "left": 8,
+        "right": 9
+       }
+      },
+      {
+       "default": "'-begin'",
+       "kind": "optional",
+       "name": "position",
+       "purpose": "Position on search path",
+       "trailingPunctuation": ",",
+       "valueSummary": "'-begin' (default) | '-end'",
+       "widgetType": "none"
+      },
+      {
+       "kind": "optional",
+       "name": "'-frozen'",
+       "widgetType": "none"
+      }
+     ],
+     "mwsize": [
+      3,
+      1
+     ],
+     "mwtype": "cell"
+    },
+    "outputArguments": {
+     "name": "oldpath",
+     "widgetType": "none"
+    },
+    "promotion": "suggested",
+    "score": 0,
+    "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+    "status": "presenting",
+    "wsbounds": {
+     "left": 0,
+     "right": 9
+    }
+   }
+  }
+ ],
+ "cd ": [
+  {
+   "signatures": {
+    "bounds": {
+     "left": 0,
+     "right": 3
+    },
+    "callingSyntax": "command",
+    "functionName": "cd",
+    "inputArguments": {
+     "bounds": {
+      "left": 3,
+      "right": 3
+     },
+     "kind": "optional",
+     "name": "newFolder",
+     "purpose": "New folder path",
+     "status": "presenting",
+     "value": "",
+     "valueSummary": "character vector | string scalar",
+     "widgetData": {
+      "choices": {
+       "mwdata": {
+        "completion": [
+         "dist\\",
+         "docs\\",
+         "media\\",
+         "node_modules\\",
+         "scripts\\",
+         "spike\\",
+         "src\\",
+         "test\\"
+        ],
+        "matchType": [
+         "folder",
+         "folder",
+         "folder",
+         "folder",
+         "folder",
+         "folder",
+         "folder",
+         "folder"
+        ]
+       },
+       "mwsize": [
+        8,
+        1
+       ],
+       "mwtype": "struct"
+      }
+     },
+     "widgetType": "completion",
+     "wsbounds": {
+      "left": 2,
+      "right": 3
+     }
+    },
+    "promotion": "suggested",
+    "score": 0,
+    "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+    "status": "presenting",
+    "wsbounds": {
+     "left": 0,
+     "right": 3
+    }
+   }
+  }
+ ],
+ "load ": [
+  {
+   "signatures": {
+    "mwdata": {
+     "bounds": [
+      {
+       "left": 0,
+       "right": 5
+      },
+      {
+       "left": 0,
+       "right": 5
+      },
+      {
+       "left": 0,
+       "right": 5
+      }
+     ],
+     "callingSyntax": [
+      "command",
+      "command",
+      "command"
+     ],
+     "functionName": [
+      "load",
+      "load",
+      "load"
+     ],
+     "inputArguments": [
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "value": "",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "CHANGELOG.md",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "CLAUDE.md",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "dist\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "docs\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "esbuild.mjs",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "LICENSE",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "matlab-command-window-0.1.0.vsix",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "matlab-command-window-0.1.0.zip",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "media\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "node_modules\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "package-lock.json",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "package.json",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "README.md",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "RESEARCH.md",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "scripts\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "spike\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "src\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "test\\",
+             "matchType": "folder"
+            },
+            {
+             "completion": "TESTING-WITH-MATLAB.md",
+             "matchType": "filename",
+             "originalSignature": 1
+            },
+            {
+             "completion": "tsconfig.json",
+             "matchType": "filename",
+             "originalSignature": 1
+            }
+           ],
+           "mwsize": [
+            20,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 4,
+          "right": 5
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "variables",
+         "purpose": "Names of variables to load",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "value": "",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "CHANGELOG.md",
+             "CLAUDE.md",
+             "dist\\",
+             "docs\\",
+             "esbuild.mjs",
+             "LICENSE",
+             "matlab-command-window-0.1.0.vsix",
+             "matlab-command-window-0.1.0.zip",
+             "media\\",
+             "node_modules\\",
+             "package-lock.json",
+             "package.json",
+             "README.md",
+             "RESEARCH.md",
+             "scripts\\",
+             "spike\\",
+             "src\\",
+             "test\\",
+             "TESTING-WITH-MATLAB.md",
+             "tsconfig.json"
+            ],
+            "matchType": [
+             "filename",
+             "filename",
+             "folder",
+             "folder",
+             "filename",
+             "filename",
+             "filename",
+             "filename",
+             "folder",
+             "folder",
+             "filename",
+             "filename",
+             "filename",
+             "filename",
+             "folder",
+             "folder",
+             "folder",
+             "folder",
+             "filename",
+             "filename"
+            ]
+           },
+           "mwsize": [
+            20,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 4,
+          "right": 5
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "-mat",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "variables",
+         "purpose": "Names of variables to load",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 5
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "value": "",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "CHANGELOG.md",
+             "CLAUDE.md",
+             "dist\\",
+             "docs\\",
+             "esbuild.mjs",
+             "LICENSE",
+             "matlab-command-window-0.1.0.vsix",
+             "matlab-command-window-0.1.0.zip",
+             "media\\",
+             "node_modules\\",
+             "package-lock.json",
+             "package.json",
+             "README.md",
+             "RESEARCH.md",
+             "scripts\\",
+             "spike\\",
+             "src\\",
+             "test\\",
+             "TESTING-WITH-MATLAB.md",
+             "tsconfig.json"
+            ],
+            "matchType": [
+             "filename",
+             "filename",
+             "folder",
+             "folder",
+             "filename",
+             "filename",
+             "filename",
+             "filename",
+             "folder",
+             "folder",
+             "filename",
+             "filename",
+             "filename",
+             "filename",
+             "folder",
+             "folder",
+             "folder",
+             "folder",
+             "filename",
+             "filename"
+            ]
+           },
+           "mwsize": [
+            20,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 4,
+          "right": 5
+         }
+        },
+        {
+         "kind": "required",
+         "name": "-ascii",
+         "widgetData": {
+          "choices": {
+           "completion": "-ascii",
+           "matchType": "literal"
+          }
+         },
+         "widgetType": "completion"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      }
+     ],
+     "promotion": [
+      "suggested",
+      "primary",
+      "primary"
+     ],
+     "score": [
+      0,
+      0,
+      0
+     ],
+     "signatureSource": [
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json"
+     ],
+     "status": [
+      "presenting",
+      "presenting",
+      "presenting"
+     ],
+     "wsbounds": [
+      {
+       "left": 0,
+       "right": 5
+      },
+      {
+       "left": 0,
+       "right": 5
+      },
+      {
+       "left": 0,
+       "right": 5
+      }
+     ]
+    },
+    "mwsize": [
+     3,
+     1
+    ],
+    "mwtype": "struct"
+   }
+  }
+ ],
+ "imread('d": [
+  {
+   "signatures": {
+    "mwdata": {
+     "bounds": [
+      {
+       "left": 0,
+       "right": 9
+      },
+      {
+       "left": 0,
+       "right": 9
+      }
+     ],
+     "duplicated": [
+      true,
+      true
+     ],
+     "functionName": [
+      "imread",
+      "imread"
+     ],
+     "inputArguments": [
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 7,
+          "right": 9
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of graphics file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'d",
+         "valueSummary": "string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "'dist\\",
+             "displayString": "'dist\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'docs\\",
+             "displayString": "'docs\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'demoicon.gif'",
+             "matchType": "pathItem",
+             "originalSignature": 1
+            },
+            {
+             "completion": "'dialog_warning_16.png'",
+             "matchType": "pathItem"
+            }
+           ],
+           "mwsize": [
+            4,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 7,
+          "right": 9
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "fmt",
+         "purpose": "Image format",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 7,
+          "right": 9
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of graphics file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'d",
+         "valueSummary": "string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": [
+            {
+             "completion": "'dist\\",
+             "displayString": "'dist\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'docs\\",
+             "displayString": "'docs\\'",
+             "matchType": "folder"
+            },
+            {
+             "completion": "'demoicon.gif'",
+             "matchType": "pathItem"
+            },
+            {
+             "completion": "'dialog_warning_16.png'",
+             "matchType": "pathItem",
+             "originalSignature": 0
+            }
+           ],
+           "mwsize": [
+            4,
+            1
+           ],
+           "mwtype": "cell"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 7,
+          "right": 9
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "fmt",
+         "purpose": "Image format",
+         "trailingPunctuation": ",",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "idx",
+         "purpose": "Image to read",
+         "trailingPunctuation": ",",
+         "valueSummary": "integer scalar | vector of integers",
+         "widgetType": "none"
+        },
+        {
+         "kind": "name",
+         "name": "options",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        4,
+        1
+       ],
+       "mwtype": "cell"
+      }
+     ],
+     "outputArguments": [
+      {
+       "mwdata": {
+        "name": [
+         "A",
+         "map",
+         "transparency"
+        ],
+        "widgetType": [
+         "none",
+         "none",
+         "none"
+        ]
+       },
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "struct"
+      },
+      {
+       "mwdata": {
+        "name": [
+         "A",
+         "map",
+         "transparency"
+        ],
+        "widgetType": [
+         "none",
+         "none",
+         "none"
+        ]
+       },
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "struct"
+      }
+     ],
+     "promotion": [
+      "suggested",
+      "primary"
+     ],
+     "score": [
+      0,
+      0
+     ],
+     "signatureSource": [
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json",
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\matlab_im\\resources\\functionSignatures.json"
+     ],
+     "status": [
+      "presenting",
+      "presenting"
+     ],
+     "wsbounds": [
+      {
+       "left": 0,
+       "right": 9
+      },
+      {
+       "left": 0,
+       "right": 9
+      }
+     ]
+    },
+    "mwsize": [
+     2,
+     1
+    ],
+    "mwtype": "struct"
+   }
+  }
+ ],
+ "cd sc": [
+  {
+   "signatures": {
+    "bounds": {
+     "left": 0,
+     "right": 5
+    },
+    "callingSyntax": "command",
+    "functionName": "cd",
+    "inputArguments": {
+     "bounds": {
+      "left": 3,
+      "right": 5
+     },
+     "kind": "optional",
+     "name": "newFolder",
+     "purpose": "New folder path",
+     "status": "presenting",
+     "value": "sc",
+     "valueSummary": "character vector | string scalar",
+     "widgetData": {
+      "choices": {
+       "completion": "scripts\\",
+       "matchType": "folder"
+      }
+     },
+     "widgetType": "completion",
+     "wsbounds": {
+      "left": 3,
+      "right": 5
+     }
+    },
+    "promotion": "suggested",
+    "score": 0,
+    "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+    "status": "presenting",
+    "wsbounds": {
+     "left": 0,
+     "right": 5
+    }
+   }
+  }
+ ],
+ "load('docs\\": [
+  {
+   "signatures": {
+    "mwdata": {
+     "bounds": [
+      {
+       "left": 0,
+       "right": 11
+      },
+      {
+       "left": 0,
+       "right": 11
+      },
+      {
+       "left": 0,
+       "right": 11
+      }
+     ],
+     "functionName": [
+      "load",
+      "load",
+      "load"
+     ],
+     "inputArguments": [
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 11
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'docs\\",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "'docs\\screenshots\\",
+             "'docs\\video\\"
+            ],
+            "displayString": [
+             "screenshots\\",
+             "video\\"
+            ],
+            "matchType": [
+             "folder",
+             "folder"
+            ]
+           },
+           "mwsize": [
+            2,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 5,
+          "right": 11
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "variables",
+         "purpose": "Names of variables to load",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 11
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'docs\\",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "'docs\\screenshots\\",
+             "'docs\\video\\"
+            ],
+            "displayString": [
+             "screenshots\\",
+             "video\\"
+            ],
+            "matchType": [
+             "folder",
+             "folder"
+            ]
+           },
+           "mwsize": [
+            2,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 5,
+          "right": 11
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "'-mat'",
+         "trailingPunctuation": ",",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "variables",
+         "purpose": "Names of variables to load",
+         "valueSummary": "string scalar | character vector",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 5,
+          "right": 11
+         },
+         "kind": "required",
+         "name": "filename",
+         "purpose": "Name of file",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "'docs\\",
+         "valueSummary": "\"matlab.mat\" (default) | string scalar | character vector",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "'docs\\screenshots\\",
+             "'docs\\video\\"
+            ],
+            "displayString": [
+             "screenshots\\",
+             "video\\"
+            ],
+            "matchType": [
+             "folder",
+             "folder"
+            ]
+           },
+           "mwsize": [
+            2,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 5,
+          "right": 11
+         }
+        },
+        {
+         "kind": "required",
+         "name": "'-ascii'",
+         "widgetData": {
+          "choices": []
+         },
+         "widgetType": "completion"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      }
+     ],
+     "outputArguments": [
+      {
+       "name": "S",
+       "widgetType": "none"
+      },
+      {
+       "name": "S",
+       "widgetType": "none"
+      },
+      {
+       "name": "S",
+       "widgetType": "none"
+      }
+     ],
+     "promotion": [
+      "suggested",
+      "primary",
+      "primary"
+     ],
+     "score": [
+      0,
+      0,
+      0
+     ],
+     "signatureSource": [
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json",
+      "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\general\\resources\\functionSignatures.json"
+     ],
+     "status": [
+      "presenting",
+      "presenting",
+      "presenting"
+     ],
+     "wsbounds": [
+      {
+       "left": 0,
+       "right": 11
+      },
+      {
+       "left": 0,
+       "right": 11
+      },
+      {
+       "left": 0,
+       "right": 11
+      }
+     ]
+    },
+    "mwsize": [
+     3,
+     1
+    ],
+    "mwtype": "struct"
+   }
+  }
+ ],
+ "zeros(": [
+  {
+   "signatures": {
+    "mwdata": [
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "duplicated": true,
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "sz",
+         "purpose": "Size of each dimension (as separate arguments)",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer values",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "be",
+             "a"
+            ],
+            "matchType": [
+             "variable",
+             "variable"
+            ],
+            "purpose": [
+             "1×1 double",
+             "1×1 double"
+            ]
+           },
+           "mwsize": [
+            2,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "typename",
+         "purpose": "Data type (class) to create",
+         "valueSummary": "\"double\" (default) | \"single\" | \"logical\" | \"int8\" | \"uint8\" | ...",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "suggested",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "duplicated": true,
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "sz",
+         "purpose": "Size of each dimension (as separate arguments)",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer values",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "be",
+             "a"
+            ],
+            "matchType": [
+             "variable",
+             "variable"
+            ],
+            "purpose": [
+             "1×1 double",
+             "1×1 double"
+            ]
+           },
+           "mwsize": [
+            2,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "'like'",
+         "trailingPunctuation": ",",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "p",
+         "purpose": "Prototype of array to create",
+         "valueSummary": "array",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json;C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "n",
+         "purpose": "Size of square matrix",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer value",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "be",
+             "a"
+            ],
+            "matchType": [
+             "variable",
+             "variable"
+            ],
+            "purpose": [
+             "1×1 double",
+             "1×1 double"
+            ]
+           },
+           "mwsize": [
+            2,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "typename",
+         "purpose": "Data type (class) to create",
+         "valueSummary": "\"double\" (default) | \"single\" | \"logical\" | \"int8\" | \"uint8\" | ...",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "optional",
+         "name": "n",
+         "purpose": "Size of square matrix",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "valueSummary": "integer value",
+         "widgetData": {
+          "choices": {
+           "mwdata": {
+            "completion": [
+             "be",
+             "a"
+            ],
+            "matchType": [
+             "variable",
+             "variable"
+            ],
+            "purpose": [
+             "1×1 double",
+             "1×1 double"
+            ]
+           },
+           "mwsize": [
+            2,
+            1
+           ],
+           "mwtype": "struct"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "optional",
+         "name": "'like'",
+         "trailingPunctuation": ",",
+         "widgetType": "none"
+        },
+        {
+         "kind": "optional",
+         "name": "p",
+         "purpose": "Prototype of array to create",
+         "valueSummary": "array",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        3,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "bounds": {
+        "left": 6,
+        "right": 6
+       },
+       "kind": "optional",
+       "name": "typename",
+       "purpose": "Data type (class) to create",
+       "status": "presenting",
+       "trailingPunctuation": ",",
+       "value": "",
+       "valueSummary": "\"double\" (default) | \"single\" | \"logical\" | \"int8\" | \"uint8\" | ...",
+       "widgetData": {
+        "choices": {
+         "mwdata": {
+          "completion": [
+           "\"double\"",
+           "\"single\"",
+           "\"logical\"",
+           "\"int8\"",
+           "\"uint8\"",
+           "\"int16\"",
+           "\"uint16\"",
+           "\"int32\"",
+           "\"uint32\"",
+           "\"int64\"",
+           "\"uint64\""
+          ],
+          "matchType": [
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal",
+           "literal"
+          ]
+         },
+         "mwsize": [
+          11,
+          1
+         ],
+         "mwtype": "struct"
+        }
+       },
+       "widgetType": "completion",
+       "wsbounds": {
+        "left": 6,
+        "right": 6
+       }
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     },
+     {
+      "bounds": {
+       "left": 0,
+       "right": 6
+      },
+      "functionName": "zeros",
+      "inputArguments": {
+       "mwdata": [
+        {
+         "bounds": {
+          "left": 6,
+          "right": 6
+         },
+         "kind": "required",
+         "name": "'like'",
+         "status": "presenting",
+         "trailingPunctuation": ",",
+         "value": "",
+         "widgetData": {
+          "choices": {
+           "completion": "\"like\"",
+           "matchType": "literal"
+          }
+         },
+         "widgetType": "completion",
+         "wsbounds": {
+          "left": 6,
+          "right": 6
+         }
+        },
+        {
+         "kind": "required",
+         "name": "p",
+         "purpose": "Prototype of array to create",
+         "valueSummary": "array",
+         "widgetType": "none"
+        }
+       ],
+       "mwsize": [
+        2,
+        1
+       ],
+       "mwtype": "cell"
+      },
+      "outputArguments": {
+       "name": "X",
+       "widgetType": "none"
+      },
+      "promotion": "primary",
+      "score": 0,
+      "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\elmat\\resources\\functionSignatures.json",
+      "status": "presenting",
+      "wsbounds": {
+       "left": 0,
+       "right": 6
+      }
+     }
+    ],
+    "mwsize": [
+     6,
+     1
+    ],
+    "mwtype": "cell"
+   }
+  }
+ ],
+ "disp('": [
+  {
+   "signatures": {
+    "bounds": {
+     "left": 0,
+     "right": 6
+    },
+    "functionName": "disp",
+    "inputArguments": {
+     "bounds": {
+      "left": 5,
+      "right": 6
+     },
+     "kind": "required",
+     "name": "X",
+     "purpose": "Input array",
+     "status": "presenting",
+     "trailingPunctuation": ",",
+     "value": "'",
+     "valueSummary": "array",
+     "widgetType": "none",
+     "wsbounds": {
+      "left": 5,
+      "right": 6
+     }
+    },
+    "promotion": "suggested",
+    "score": 0,
+    "signatureSource": "C:\\Program Files\\MATLAB\\R2026b\\toolbox\\matlab\\lang\\resources\\functionSignatures.json",
+    "status": "presenting",
+    "wsbounds": {
+     "left": 0,
+     "right": 6
+    }
+   }
+  }
+ ]
+}

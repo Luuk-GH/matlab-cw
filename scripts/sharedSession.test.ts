@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { readSharedSession, releaseFromInstall, releaseFromPath, sessionFilePath } from '../src/backend/sharedSession';
+import { ownership, parseProcessTable, processChain, processTable, readSharedSession, releaseFromInstall, releaseFromPath, sessionFilePath } from '../src/backend/sharedSession';
 
 assert.strictEqual(releaseFromPath('C:\\Program Files\\MATLAB\\R2026b\\bin\\win64\\MATLAB.exe\r\n'), 'R2026b');
 assert.strictEqual(releaseFromPath('/usr/local/MATLAB/R2024a/bin/glnxa64/MATLAB'), 'R2024a');
@@ -57,3 +57,33 @@ assert.strictEqual(releaseFromInstall(path.join(dir, 'elsewhere', 'matlab')), nu
 
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('sharedSession: all assertions passed');
+
+// ---- ownership: only the MATLAB the MATLAB extension in this VS Code window started (incident of 23-11-2026) ----
+{
+  const t = parseProcessTable([
+    '100 1 Code.exe',              // extension host (process.pid)
+    '200 100 node.exe',            // the official language server
+    '300 200 MATLAB.exe',          // its MATLAB launcher
+    '35272 300 MATLAB.exe',        // the user's MATLAB
+    '70808 9 matlab-mcp-server.exe',
+    '94380 70808 MATLAB.exe',      // started by the MCP server when the shared one was gone
+    '60740 94380 MATLAB.exe',
+    '777 1 MATLAB.exe',            // a MATLAB desktop / another window
+    '5 6 a', '6 5 b',              // a loop (reused process ids)
+    '',
+    '  42   41 /usr/local/MATLAB/R2024a/bin/glnxa64/MATLAB',
+  ].join('\r\n'));
+  assert.deepStrictEqual(ownership(35272, 100, t), { ours: true });
+  assert.deepStrictEqual(ownership(300, 100, t), { ours: true });
+  assert.deepStrictEqual(ownership(60740, 100, t), { ours: false, startedBy: 'matlab-mcp-server.exe (process 70808)' });
+  assert.deepStrictEqual(ownership(777, 100, t), { ours: false, startedBy: 'a process that has ended' });
+  assert.deepStrictEqual(ownership(12345, 100, t), { ours: false, startedBy: 'an unknown process' });
+  assert.deepStrictEqual(ownership(100, 100, t), { ours: false, startedBy: 'Code.exe (process 100)' }, 'the host itself is not a MATLAB it started');
+  assert.strictEqual(processChain(5, t).length, 2, 'stops at a loop');
+  assert.strictEqual(t.get(42)?.name, 'MATLAB', 'name without its folder');
+}
+// processTable reads the real process list: this process and its parent are in it.
+(async () => {
+  const t = await processTable();
+  assert.ok(t.get(process.pid)?.ppid === process.ppid, `own process in the table (${t.size} processes)`);
+})().catch(e => { console.error(e); process.exit(1); });

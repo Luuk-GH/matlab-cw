@@ -37,6 +37,8 @@ interface Pending extends Job {
   args?: unknown[];
   nargout?: number;
   onSend?: () => void;
+  /** The caller's handle for a command, to cancel it while it waits (cancelQueued). */
+  tag?: number;
   resolveCommand?: (kind: PromptKind) => void;
   resolveQuery?: (r: QueryResult) => void;
   sawBusy?: boolean;
@@ -122,11 +124,19 @@ export class MatlabSession extends EventEmitter {
    * Queue code to run as if typed at the prompt. Resolves with the prompt MATLAB showed afterwards
    * ('ready', 'debug' = stopped in the debugger at K>>, 'cancelled' = dropped by interrupt/exit).
    */
-  sendLine(code: string, onSend?: () => void): Promise<PromptKind> {
+  sendLine(code: string, onSend?: () => void, tag?: number): Promise<PromptKind> {
     if (this._state === 'exited') { return Promise.resolve('cancelled'); }
     return new Promise(resolve => {
-      this.queue.push({ kind: 'command', line: code, onSend, resolveCommand: resolve });
+      this.queue.push({ kind: 'command', line: code, onSend, tag, resolveCommand: resolve });
     });
+  }
+
+  /** Drop a command (sendLine's `tag`) that waits in the queue; it resolves 'cancelled'. False when it already runs. */
+  cancelQueued(tag: number): boolean {
+    const p = this.queue.removeWaiting(j => j.kind === 'command' && j.tag === tag);
+    if (!p) { return false; }
+    this.finish(p, 'cancelled');
+    return true;
   }
 
   /**

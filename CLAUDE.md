@@ -15,4 +15,8 @@ Ported from ~/Projects/octave-extension (do not make that project depend on this
 Commands: npm install; npm run compile; npm run package; npm run test:unit; npm run test:fake; npm run test:integration; npm run test:vsix;
 npm run test:real (integration tests on the real shared MATLAB; restores its folder, never leaves it at K>>);
 npm run demo:screenshots (docs/screenshots/). ALWAYS also test with the real MATLAB (user's instruction).
-Nothing is added to the user's MATLAB path: help/completion use MATLAB's own help, which, who and the LS completion.
+Nothing is added to the user's MATLAB path: help/completion use MATLAB's own help, which, who and the LS completion
+(file/folder names and signature help from matlabls.internal.getCompletions).
+Only the MATLAB started by THIS window's MATLAB extension is connected (session.ts notOurs, sharedSession.ts
+ownership); the test launchers set MCW_ANY_MATLAB=1 to skip that check. Use the user's screen (computer-use) only when
+unavoidable; prefer tests and a browser harness of the webview.

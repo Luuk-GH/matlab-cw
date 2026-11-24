@@ -68,7 +68,7 @@ export async function run(): Promise<void> {
         api.session.interrupt();
         await sleep(500);
         await withLimit(api.session.execute("if ~isempty(dbstack) || feature('IsDebugMode'), dbquit('all'); end"), 10000);
-        await withLimit(api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s mcwOrder`), 10000);
+        await withLimit(api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s mcwOrder mcwDrop mcwA`), 10000);
       };
     }
     s = await untilMode('ready');
@@ -119,12 +119,41 @@ export async function run(): Promise<void> {
     await typeLine('for k = 1:60, disp(k), end');
     await untilText(/\s60\n/);
     s = await untilMode('ready');
-    check('long output collapsed', (s?.collapsed ?? 0) >= 1, String(s?.collapsed));
+    check('long output shown in full (collapseLongOutput off)', s?.collapsed === 0, String(s?.collapsed));
+    // Command History pop-up (default): Up lists the commands that start with what is typed.
     await cw.test({ kind: 'type', text: 'x =' });
     await cw.test({ kind: 'key', key: 'ArrowUp' });
     s = await snap();
-    check('Up recalls history filtered by prefix', s.input === 'x = 6*7', s.input);
+    check('Up opens the Command History pop-up, filtered by what is typed',
+      s.historyPopup.length > 0 && s.historyPopup.every(r => /^(\d+x )?x =/.test(r)) && s.historySelected.join() === 'x = 6*7', JSON.stringify(s.historyPopup));
+    await cw.test({ kind: 'key', key: 'ArrowRight' });
+    s = await snap();
+    check('Right puts the selected command on the line', s.input === 'x = 6*7' && s.historyPopup.length === 0, s.input);
     await cw.test({ kind: 'key', key: 'Escape' });
+    for (const line of ['mcwA = 1', 'mcwA = mcwA + 1', 'mcwA = mcwA + 1']) { await typeLine(line); await untilMode('ready'); }
+    await cw.test({ kind: 'type', text: 'mcwA' });
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    s = await snap();
+    check('a repeated command shows once with its count', s.historyPopup[s.historyPopup.length - 1] === '2x mcwA = mcwA + 1', JSON.stringify(s.historyPopup.slice(-3)));
+    await cw.test({ kind: 'key', key: 'Shift-ArrowUp' });
+    s = await snap();
+    check('Shift+Up selects several', s.historySelected.join('|') === 'mcwA = 1|mcwA = mcwA + 1', JSON.stringify(s.historySelected));
+    await cw.test({ kind: 'key', key: 'Enter' });
+    await untilMode('ready');
+    s = await snap();
+    check('Enter runs the selected commands in order', s.input === '' && /^>> mcwA = 1$[\s\S]*^>> mcwA = mcwA \+ 1$/m.test(s.text.slice(-400)), JSON.stringify(s.text.slice(-200)));
+    await typeLine("fprintf('mcwA=%d\\n', mcwA)");
+    check('they ran (mcwA = 2)', !!(await untilText(/^mcwA=2$/m)), JSON.stringify((await snap()).text.slice(-200)));
+    await untilMode('ready');
+    // historyPopup off: Up recalls on the line, as before.
+    await vscode.workspace.getConfiguration('matlabCommandWindow').update('historyPopup', false, vscode.ConfigurationTarget.Global);
+    await sleep(300);
+    await cw.test({ kind: 'type', text: 'x =' });
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    s = await snap();
+    check('with historyPopup off, Up recalls history on the line', s.input === 'x = 6*7' && s.historyPopup.length === 0, s.input);
+    await cw.test({ kind: 'key', key: 'Escape' });
+    await vscode.workspace.getConfiguration('matlabCommandWindow').update('historyPopup', undefined, vscode.ConfigurationTarget.Global);
 
     // ---- completion, help tooltip, usage hint ----
     await typeLine("myStruct = struct('alpha', 1, 'beta', 2);");
@@ -167,6 +196,21 @@ export async function run(): Promise<void> {
     check('Alt+Down shows the next form', /2 of \d+/.test(s.signature) && !/^iplot\(Y,LineSpec,options\)/.test(s.signature), s.signature);
     for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
     await cw.test({ kind: 'key', key: 'Escape' });
+
+    // ---- file and folder completion from MATLAB's function signatures (load('…, cd …) ----
+    {
+      // Fake: data recorded in this repository's folder; real: the test workspace (MATLAB is in it).
+      const [typed, pick, after] = real ? ["readtable('err", 'error_demo.m', "readtable('error_demo.m'"] : ['cd sc', 'scripts\\', 'cd scripts\\'];
+      await cw.test({ kind: 'type', text: typed });
+      await cw.test({ kind: 'key', key: 'Tab' });
+      s = await waitFor(async () => { const x = await snap(); return x.completions.includes(pick) ? x : undefined; }, 5000);
+      check('file/folder names complete in a path argument', !!s, JSON.stringify((await snap()).completions));
+      await sleep(200);   // CodeMirror ignores accepting within its interactionDelay (75 ms) after the list opens
+      await cw.test({ kind: 'key', key: 'Enter' });
+      s = await snap();
+      check('accepting a name puts it on the line', s.input === after, s.input);
+      for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
+    }
 
     // ---- input(), keyboard, Stop ----
     await typeLine(`run('${mq(path.join(dir, 'ask_input.m'))}')`);
@@ -214,12 +258,20 @@ export async function run(): Promise<void> {
     await typeLine(`run('${mq(path.join(dir, 'long_loop.m'))}')`);
     s = await untilMode('busy');
     check('Stop button visible while busy', !!s?.stopVisible);
+    await typeLine('disp(111)');
+    await typeLine('disp(222)');
+    s = await waitFor(async () => { const x = await snap(); return x?.queued.length === 2 ? x : undefined; }, 3000);
+    check('commands typed while busy are shown as queued', s?.queued.join('|') === 'disp(111)|disp(222)', String(s?.queued ?? (await snap()).queued));
+    await cw.test({ kind: 'cancelQueued', index: 1 });
+    s = await waitFor(async () => { const x = await snap(); return x?.queued.length === 1 ? x : undefined; }, 3000);
+    check('× removes one queued command', s?.queued[0] === 'disp(111)', String((await snap()).queued));
     // Press Stop once the loop really runs: [verified, R2026b] an interrupt that arrives before the code starts, while
     // the MATLAB extension's debugger is active (after the keyboard step), becomes a debugger pause at line 1.
     await sleep(real ? 1500 : 300);
     await cw.test({ kind: 'clickStop' });
     s = await untilMode('ready', 5000);
     check('Stop interrupts the run', !!s && s.stopVisible === false, (await snap()).mode);
+    check('Stop drops the queued commands too', !!s && s.queued.length === 0 && !/^>> disp\((111|222)\)$/m.test(s.text), String(s?.queued));
 
     // ---- Run File / Section / Selection from the editor go to the Command Window, the editor keeps focus ----
     const demo = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(path.join(dir, 'error_demo.m')));
@@ -233,6 +285,24 @@ export async function run(): Promise<void> {
     demo.selection = new vscode.Selection(0, 0, 0, 0);
     await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSection')), 15000);
     check('Run Section runs the section at the cursor', !!(await untilText(/>> % error_demo\.m: section lines 1–\d/)), JSON.stringify((await snap()).text.slice(-500)));
+
+    // ---- dropping a .mat file loads it (other files are ignored) ----
+    {
+      await untilMode('ready');
+      const mat = path.join(dir, 'mcw_drop_test.mat');
+      if (real) { await api.session.execute(`mcwDrop = 4242; save('${mq(mat)}', 'mcwDrop'); clear mcwDrop`); }
+      const uris = [vscode.Uri.file(mat).toString(), vscode.Uri.file(path.join(dir, 'error_demo.m')).toString()];
+      await cw.test({ kind: 'drop', type: 'application/vnd.code.uri-list', data: uris.join('\r\n') });
+      s = await untilText(/^>> load\('[^\n]*mcw_drop_test\.mat'\)$/m, 5000);
+      check('dropping a .mat file runs load() on it', !!s && !/load\('[^\n]*error_demo\.m'\)/.test(s.text), JSON.stringify((await snap()).text.slice(-300)));
+      if (real) {
+        await untilMode('ready');
+        await typeLine('disp(mcwDrop)');
+        check('the dropped .mat file is loaded into the workspace', !!(await untilText(/^\s*4242$/m)), JSON.stringify((await snap()).text.slice(-200)));
+        try { fs.unlinkSync(mat); } catch { /* gone */ }
+      }
+      await untilMode('ready');
+    }
     await untilMode('ready');
 
     await typeLine('clc');
@@ -263,6 +333,16 @@ export async function run(): Promise<void> {
     await vscode.commands.executeCommand('matlabCommandWindow.disconnect');
     s = await untilMode('exited');
     check('Disconnect leaves the Command Window disconnected', !!s && /Disconnected\. MATLAB keeps running/.test(s.text), (await snap()).text.slice(-200));
+    {
+      // Only the MATLAB started by the MATLAB extension in this window: the shared MATLAB here (the fake's test runner,
+      // or the real one of the developer's own VS Code window) is not, so without MCW_ANY_MATLAB it is refused.
+      delete process.env.MCW_ANY_MATLAB;
+      await Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.connect')).catch(() => undefined);
+      s = await untilText(/was started by [^\n]+, not by the MATLAB extension in this VS Code window/, 20000);
+      check('refuses a MATLAB not started by the MATLAB extension in this window', !!s && api.session.state === 'exited',
+        `${api.session.state}: ${(await snap()).text.slice(-300)}`);
+      process.env.MCW_ANY_MATLAB = '1';
+    }
     if (real) {
       // Do not touch the real session file: just connect again.
       await Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.connect')).catch(() => undefined);
@@ -281,7 +361,7 @@ export async function run(): Promise<void> {
     check('works after reconnecting', !!(await untilText(/\s123\n/)));
     if (real) {
       // Leave the user's MATLAB as we found it: folder back, our test variables gone.
-      await api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s mcwOrder`);
+      await api.session.execute(`cd('${mq(startFolder ?? '.')}'); clear x y myStruct kb a b n s mcwOrder mcwDrop mcwA`);
       const now = await api.session.queryText('pwd');
       check('MATLAB is back in its own folder', now === startFolder, `${now} vs ${startFolder}`);
     }

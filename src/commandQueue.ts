@@ -66,6 +66,12 @@ export class CommandQueue<J extends Job> {
     return done;
   }
 
+  /** Drop the first job not sent yet that matches; returns it (undefined when none, e.g. it was sent already). */
+  removeWaiting(match: (job: J) => boolean): J | undefined {
+    const i = this.pending.findIndex(match);
+    return i < 0 ? undefined : this.pending.splice(i, 1)[0];
+  }
+
   /** Drop the jobs that have not been sent yet (e.g. after an interrupt). Returns them. */
   cancelWaiting(): J[] {
     return this.pending.splice(0);

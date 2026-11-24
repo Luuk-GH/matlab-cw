@@ -7,7 +7,7 @@ assert.strictEqual(inputPromptText(['Enter a number: ']), 'Enter a number: ');
 assert.strictEqual(inputPromptText('Name: '), 'Name: ');
 assert.strictEqual(inputPromptText({ promptString: 'x? ' }), 'x? ');
 assert.strictEqual(inputPromptText(undefined), '');
-import { linkTarget, parseAnchors } from '../src/commandWindow/webview/anchors';
+import { hideHelperFrames, linkTarget, parseAnchors } from '../src/commandWindow/webview/anchors';
 import { fileFromWhich, functionDeclaration, parseHelp } from '../src/language/helpText';
 import { callContext, completionPrefix } from '../src/language/matlabSyntax';
 import { matlabString, textOf } from '../src/sessionText';
@@ -88,3 +88,38 @@ assert.strictEqual(textOf({ value: 'v' }), 'v');
 assert.strictEqual(matlabString("C:\\it's.m"), "'C:\\it''s.m'");
 
 console.log('parsing: all assertions passed');
+
+// ---- hideHelperFrames: run() frames in errors and warning backtraces ----
+{
+  const warn = 'Warning: The name "a" matches multiple I/O channels.\n> In ltipack/LabeledIOModel/name2index (line 1044)\n'
+    + 'In () (line 128)\nIn WELLE v6 TMD Design (line 60)\nIn run (line 100)\nWarning: next\n';
+  assert.strictEqual(hideHelperFrames(warn), 'Warning: The name "a" matches multiple I/O channels.\n> In ltipack/LabeledIOModel/name2index (line 1044)\n'
+    + 'In () (line 128)\nIn WELLE v6 TMD Design (line 60)\nWarning: next\n', 'warning trace: run frame without ">" removed, next warning kept');
+  assert.strictEqual(hideHelperFrames('  In f (line 2)\n  In run (line 100)\n'), '  In f (line 2)\n');
+  assert.strictEqual(hideHelperFrames('> In run (line 100)\n'), '');
+  const err = "Error using f\nboom\nError in s (line 3)\n    f()\n    ^^^\nError in run (line 100)\n    evalin('caller', strcat(script, ';'));\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n";
+  assert.strictEqual(hideHelperFrames(err), 'Error using f\nboom\nError in s (line 3)\n    f()\n    ^^^\n');
+  assert.strictEqual(hideHelperFrames('Error in run (line 100)\nError in x (line 1)\n'), 'Error in x (line 1)\n', 'never eats the next frame');
+  assert.strictEqual(hideHelperFrames('In running (line 3)\nIn myrun (line 4)\n'), 'In running (line 3)\nIn myrun (line 4)\n', 'other names kept');
+}
+
+// ---- maybePathArgument: when to ask MATLAB for file/folder completions ----
+import { maybePathArgument } from '../src/language/matlabSyntax';
+for (const yes of ["load('", "load('da", "addpath(p, \"src\\", 'cd ', 'cd ..\da', 'load data', '  genpath(\'C:\Us', "x = readtable('d"]) {
+  assert.ok(maybePathArgument(yes), `path argument: ${yes}`);
+}
+for (const no of ['x = 3', 'disp(', "disp('a') ", "s = 'abc", '% load(\'', 'if x', "x = ['a", 'a == b', "load('a.mat') "]) {
+  assert.ok(!maybePathArgument(no), `not a path argument: ${no}`);
+}
+
+// ---- historyRows: the Command History pop-up ----
+import { historyRows } from '../src/commandWindow/webview/historyRows';
+{
+  const h = ['a = 1', 'plot(x)', 'plot(x)', 'b = 2', 'plot(x)', 'a = 3', '', 'a = 3'];
+  assert.deepStrictEqual(historyRows(h, ''), [
+    { text: 'a = 1', count: 1 }, { text: 'plot(x)', count: 2 }, { text: 'b = 2', count: 1 }, { text: 'plot(x)', count: 1 }, { text: 'a = 3', count: 1 },
+    { text: 'a = 3', count: 1 }], 'only repeats right after each other are counted (an empty line between breaks it)');
+  assert.deepStrictEqual(historyRows(h, 'a').map(r => r.text), ['a = 1', 'a = 3', 'a = 3'], 'filtered by prefix');
+  assert.deepStrictEqual(historyRows(['x', 'y', 'x', 'x'], 'x'), [{ text: 'x', count: 1 }, { text: 'x', count: 2 }], 'a repeat hidden by the filter is not merged');
+  assert.deepStrictEqual(historyRows(['a1', 'a2', 'a3'], 'a', 2).map(r => r.text), ['a2', 'a3'], 'the newest rows');
+}

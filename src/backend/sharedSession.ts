@@ -112,3 +112,56 @@ export async function matlabReleaseOfProcess(pid: number): Promise<string | null
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Which MATLAB is ours: only the one the MATLAB extension in THIS VS Code window started. Its language server is a
+// child of the extension host we run in, and starts MATLAB (on Windows MATLAB.exe starts a second MATLAB.exe), so the
+// shared MATLAB descends from our extension host. Another client's MATLAB, e.g. one the MATLAB MCP server starts with
+// `-r "...initializeMCP()"` when the shared one is gone, or the MATLAB of another VS Code window, does not; it also
+// writes sessionDetails.json, and following it there silently switched the Command Window to a different MATLAB.
+
+export interface ProcInfo { pid: number; ppid: number; name: string; }
+
+/** `pid`, its parent, its parent's parent, ... (stops at a loop, a missing process or after 16 steps). */
+export function processChain(pid: number, table: Map<number, ProcInfo>): ProcInfo[] {
+  const chain: ProcInfo[] = [];
+  const seen = new Set<number>();
+  for (let p = table.get(pid); p && !seen.has(p.pid) && chain.length < 16; p = table.get(p.ppid)) {
+    seen.add(p.pid);
+    chain.push(p);
+  }
+  return chain;
+}
+
+export type Ownership = { ours: true } | { ours: false; startedBy: string };
+
+/** Whether MATLAB `pid` was started (directly or not) by process `ancestor`; else what started it. */
+export function ownership(pid: number, ancestor: number, table: Map<number, ProcInfo>): Ownership {
+  const chain = processChain(pid, table);
+  if (chain.slice(1).some(p => p.pid === ancestor)) { return { ours: true }; }
+  if (!chain.length) { return { ours: false, startedBy: 'an unknown process' }; }
+  const starter = chain.find(p => !/^matlab(\.exe)?$/i.test(p.name));
+  return { ours: false, startedBy: starter ? `${starter.name} (process ${starter.pid})` : 'a process that has ended' };
+}
+
+/** Parse "pid ppid name" lines (the output of processTable's commands). */
+export function parseProcessTable(text: string): Map<number, ProcInfo> {
+  const table = new Map<number, ProcInfo>();
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^\s*(\d+)\s+(\d+)\s*(.*?)\s*$/.exec(line);
+    if (m) { table.set(+m[1], { pid: +m[1], ppid: +m[2], name: m[3].replace(/^.*[\/]/, '') }); }
+  }
+  return table;
+}
+
+/** All processes with their parent (about 1 s on Windows). Empty when it cannot be read. */
+export async function processTable(): Promise<Map<number, ProcInfo>> {
+  const { execFile } = await import('child_process');
+  const run = (cmd: string, args: string[]) => new Promise<string>(resolve =>
+    execFile(cmd, args, { timeout: 15000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 }, (_e, out) => resolve(String(out ?? ''))));
+  const text = process.platform === 'win32'
+    ? await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.ParentProcessId) $($_.Name)" }'])
+    : await run('ps', ['-A', '-o', 'pid=,ppid=,comm=']);
+  return parseProcessTable(text);
+}

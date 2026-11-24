@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0 (2026-11-24)
+
+- Connects only to the MATLAB that the MATLAB extension in the same VS Code window started (its process descends
+  from this window's extension host). A MATLAB that another client shared is refused with a message, instead of being
+  followed: seen when MathWorks' MCP server started its own MATLAB after the shared one ended, and the Command Window
+  silently switched to it.
+- Command History pop-up on ↑, like MATLAB's: filtered by what is typed, `2x` for repeats, Shift+↑/↓ selects several,
+  Enter runs, → puts on the line (setting `matlabCommandWindow.historyPopup`; off: inline recall as before). Repeated
+  commands are now kept in the history.
+- File and folder completion for arguments that MATLAB's function signatures declare as paths (`load('`, `cd `,
+  `addpath('`, `readtable('`, …), from MATLAB's own completion data; accepting a folder lists its contents.
+- Queued commands are shown (dimmed, *queued*) until they run; × drops one, Stop drops all.
+- Drop a `.mat` file on the Command Window to load it.
+- The MATLAB Workspace view is put beside the Command Window in the panel once (setting
+  `matlabCommandWindow.workspaceBesideCommandWindow`).
+- Long output is no longer collapsed by default (setting `matlabCommandWindow.collapseLongOutput`).
+- `run` frames are also removed from warning backtraces (`In run (line 100)` without `>`).
+- The cursor is visible: it was a 0.8 px black line on dark themes. A click anywhere in the window puts it in the
+  input line.
+
 ## 0.1.0 (2026-11-20) — preview; spike passes on R2026b, Command Window UI not yet tested with real MATLAB
 
 - Command Window webview attached to the MATLAB the official MATLAB extension runs (shared with

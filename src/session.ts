@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { LsBackend } from './backend/lsBackend';
-import { readSharedSession, SharedSession, sessionFilePath } from './backend/sharedSession';
+import { ownership, processTable, readSharedSession, SharedSession, sessionFilePath } from './backend/sharedSession';
 import { CompletionCandidate } from './backend/types';
 import { ConsoleView } from './consoleView';
 import { HelpInfo, parseHelp } from './language/helpText';
-import { parseSignatures, SignatureHelp } from './language/signatures';
+import { parsePathChoices, parseSignatures, PathCompletion, SignatureHelp } from './language/signatures';
 import { describeServer, resolveServer } from './locator';
 import { InputSource, MatlabSession, PromptKind, QueryResult, SessionState } from './matlabSession';
 import { matlabString, textOf } from './sessionText';
@@ -17,8 +17,8 @@ export interface CommandWindowReveal { reveal(preserveFocus: boolean): void; isV
 
 /** How to share a MATLAB session (shown when there is none). */
 export const SHARE_HINT =
-  'To connect, run shareMATLABSession() in the MATLAB that the MATLAB extension runs (its MATLAB terminal), ' +
-  'or in your MATLAB desktop. It comes with MathWorks\' MATLAB MCP Server Toolbox (installed by the MATLAB Agentic Toolkit, R2023a or newer).';
+  'To connect, run shareMATLABSession() in the MATLAB that the MATLAB extension in this VS Code window runs (its MATLAB terminal). ' +
+  'It comes with MathWorks\' MATLAB MCP Server Toolbox (installed by the MATLAB Agentic Toolkit, R2023a or newer).';
 
 /**
  * The Command Window's connection to an EXISTING MATLAB: the one shared with shareMATLABSession(), normally the
@@ -36,6 +36,11 @@ export class SessionManager implements vscode.Disposable {
   private webview: CommandWindowReveal | undefined;
   private inputPrompt = '';
   private lastSeenMtime = 0;
+  private commandId = 0;
+  /** The last refusal shown (notOurs), so that retries do not repeat it. */
+  private lastRefusal: string | undefined;
+  /** notOurs() result for the last MATLAB process checked (its parent never changes). */
+  private ownerCache: { pid: number; mtimeMs: number; refusal: string | undefined } | undefined;
   private helpCache = new Map<string, Promise<HelpInfo | undefined>>();
   private readonly inputEmitter = new vscode.EventEmitter<void>();
   /** A command of ours asks for input() or waits in pause (keepInFront.ts answers the MATLAB terminal's reveal). */
@@ -98,9 +103,25 @@ export class SessionManager implements vscode.Disposable {
     const trimmed = code.replace(/\s+$/, '');
     if (!trimmed.trim()) { return 'ready'; }
     const s = await this.connect(true);
-    if (s.state !== 'idle' || s.queuedCount > 0) { this.log.info(`queued while ${s.state}: ${display}`); }
-    return s.sendLine(trimmed, () => this.forViews(v => v.echoCommand(display)));
+    const id = ++this.commandId;
+    let sent = false, queued = false;
+    const done = s.sendLine(trimmed, () => {
+      sent = true;
+      if (queued) { this.forViews(v => v.unqueueCommand(id)); }
+      this.forViews(v => v.echoCommand(display));
+    }, id);
+    if (!sent) {   // it waits behind a running command: show it already
+      queued = true;
+      this.log.info(`queued while ${s.state}: ${display}`);
+      this.forViews(v => v.queueCommand(id, display));
+    }
+    const kind = await done;
+    if (queued && !sent) { this.forViews(v => v.unqueueCommand(id)); }   // cancelled (Stop, its ×, MATLAB gone)
+    return kind;
   }
+
+  /** The × of a queued command: drop it before it runs. */
+  cancelQueued(id: number): void { this.session?.cancelQueued(id); }
 
   /** A hidden function call that returns text; only when connected (and idle, for background calls). */
   async queryText(fn: string, args: unknown[] = [], background = true, timeoutMs = 4000): Promise<string | undefined> {
@@ -151,6 +172,18 @@ export class SessionManager implements vscode.Disposable {
       this.signatureFns = this.signatureFns.filter(f => f !== fn);
     }
     return undefined;
+  }
+
+  /**
+   * File and folder names for a file/folder argument at the cursor (load('…, cd …, addpath(…), from the same MATLAB
+   * signature data as signatureFor: MATLAB's functionSignatures.json say which arguments take a path. Only when idle.
+   */
+  async completePaths(code: string, offset: number): Promise<PathCompletion | undefined> {
+    const s = this.session;
+    const fn = this.signatureFns[0];
+    if (!s || !fn || (s.state !== 'idle' && s.state !== 'debug')) { return undefined; }
+    const r = await withTimeout(s.query(fn, [code, '', offset], { background: true }), 3000) as QueryResult | undefined;
+    return r?.ok ? parsePathChoices(r.outputs[0]) : undefined;
   }
 
   /** Usage lines and a one-line description from help(), cached until a .m file is saved. Only when idle. */
@@ -245,6 +278,17 @@ export class SessionManager implements vscode.Disposable {
       throw err;
     }
     const shared = lookup.session;
+    const foreign = await this.notOurs(shared);
+    if (foreign) {
+      this.lastSeenMtime = shared.mtimeMs;
+      if (foreign !== this.lastRefusal) { this.forViews(v => v.info(foreign)); }   // once, not on every retry
+      this.lastRefusal = foreign;
+      this.log.info(foreign);
+      if (report) { void vscode.window.showWarningMessage(`MATLAB Command Window: ${foreign}`); }
+      const err: ReportedError = new Error(foreign);
+      err.reported = true;
+      throw err;
+    }
     let server;
     try {
       server = resolveServer(vscode.workspace.getConfiguration('matlabCommandWindow').get<string>('languageServerPath') ?? '');
@@ -316,6 +360,7 @@ export class SessionManager implements vscode.Disposable {
       throw err;
     }
     this.connected = shared;
+    this.lastRefusal = undefined;
     this.log.info(`connected to MATLAB ${s.release ?? ''} (pid ${shared.pid}) via ${describeServer(server)}`);
     this.forViews(v => v.info(`Connected to MATLAB ${s.release ?? ''} (process ${shared.pid || '?'}), shared with the MATLAB extension.`.replace('  ', ' ')));
     if (s.state === 'idle' || s.state === 'debug') { this.forViews(v => v.showPrompt(s.state === 'debug' ? 'debug' : 'ready')); }
@@ -325,7 +370,8 @@ export class SessionManager implements vscode.Disposable {
 
   /**
    * shareMATLABSession() rewrites the session file: connect when the Command Window is visible and we are not
-   * connected, or reconnect when a different MATLAB was shared.
+   * connected, or reconnect when this window's MATLAB was shared again (e.g. after a restart). Another client's
+   * MATLAB (notOurs) never replaces the connection.
    */
   private watchSessionFile(): void {
     const file = sessionFilePath();
@@ -337,9 +383,41 @@ export class SessionManager implements vscode.Disposable {
       if (!lookup.ok) { return; }
       const same = this.connected && this.connected.port === lookup.session.port && this.connected.pid === lookup.session.pid;
       if (same) { return; }
-      if (this.session && !this.running) { this.stopSession(); }
-      if (!this.session && this.webview?.isVisible()) { void this.connect(false).catch(() => undefined); }
+      void (async () => {
+        if (this.session) {
+          if (this.running || await this.notOurs(lookup.session)) { return; }
+          this.stopSession();
+        }
+        if (!this.session && this.webview?.isVisible()) { void this.connect(false).catch(() => undefined); }
+      })();
     });
+  }
+
+  /**
+   * Why we do not connect to this shared MATLAB, or undefined when it is the one the MATLAB extension in this VS Code
+   * window started (see ownership() in sharedSession.ts). MCW_ANY_MATLAB=1 skips the check (tests: a fake MATLAB, or
+   * the real one of the developer's own VS Code window).
+   */
+  private async notOurs(shared: SharedSession): Promise<string | undefined> {
+    if (process.env.MCW_ANY_MATLAB === '1') { return undefined; }
+    if (!shared.pid) {
+      return 'The shared-session file does not say which MATLAB process it is, so the Command Window does not connect to it. '
+        + 'Run shareMATLABSession() again in the MATLAB terminal of this window.';
+    }
+    // A process's parent never changes: ask once per share (pid and file time; a reused pid comes with a new share)
+    // (Get-CimInstance takes about a second).
+    if (this.ownerCache?.pid === shared.pid && this.ownerCache.mtimeMs === shared.mtimeMs) { return this.ownerCache.refusal; }
+    const table = await processTable();
+    if (!table.size) {   // not cached: may work next time
+      return 'The Command Window could not read the process list, so it cannot tell whether the shared MATLAB is the one '
+        + 'of the MATLAB extension in this VS Code window, and does not connect. See the "MATLAB Command Window" output.';
+    }
+    const o = ownership(shared.pid, process.pid, table);
+    const refusal = o.ours ? undefined
+      : `The shared MATLAB (process ${shared.pid}) was started by ${o.startedBy}, not by the MATLAB extension in this VS Code window, `
+        + 'so the Command Window does not connect to it. Run shareMATLABSession() in the MATLAB terminal of this window.';
+    this.ownerCache = { pid: shared.pid, mtimeMs: shared.mtimeMs, refusal };
+    return refusal;
   }
 
   private onState(s: MatlabSession, st: SessionState): void {

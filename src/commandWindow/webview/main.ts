@@ -7,10 +7,11 @@ import { bracketMatching, HighlightStyle, StreamLanguage, StringStream, syntaxHi
 import { Annotation, Compartment, EditorState, Prec } from '@codemirror/state';
 import { drawSelection, EditorView, hoverTooltip, keymap, placeholder, Tooltip } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
-import { callContext, completionPrefix } from '../../language/matlabSyntax';
+import { callContext, completionPrefix, maybePathArgument } from '../../language/matlabSyntax';
+import { historyRows, HistoryRow } from './historyRows';
 import { matlabStreamParser } from './matlabMode';
-import { parseAnchors, LinkHit as Hit } from './anchors';
-import type { CompletionItem, FromWebview, HelpResult, InputMode, SignatureHelp, Snapshot, TestAction, ToWebview } from '../protocol';
+import { hideHelperFrames, parseAnchors, LinkHit as Hit } from './anchors';
+import type { CompletionItem, FromWebview, HelpResult, InputMode, PathCompletion, SignatureHelp, Snapshot, TestAction, ToWebview, WebviewSettings } from '../protocol';
 
 declare function acquireVsCodeApi(): { postMessage(m: FromWebview): void };
 const vscode = acquireVsCodeApi();
@@ -21,21 +22,20 @@ const promptEl = document.getElementById('prompt')!;
 const stopEl = document.getElementById('stop') as HTMLButtonElement;
 const hintEl = document.getElementById('hint')!;
 const sigEl = document.getElementById('sigbox')!;
+const queueEl = document.getElementById('queue')!;
 const testHooks = document.body.dataset.testHooks === 'true';
 
-/** Output blocks longer than this many lines are collapsed once their command finishes. */
+/** Output blocks longer than this many lines are collapsed once their command finishes (when the setting is on). */
 const COLLAPSE_LINES = 40;
 /** Oldest blocks are dropped beyond this many. */
 const MAX_BLOCKS = 1000;
-/** Stack frames of run() (Run File) and of the extension's own helpers: noise for the user. */
-// [verified, R2026b] a frame is followed by its code line and a ^^^ line: hide those too (but never a next frame).
-const HELPER_FRAME = /^(?:Error in|\s*> In) (?:run|mcw\.\w+) \(line \d+\)(?:\r?\n|$)(?:(?!Error in |Error using |\s*> In )[^\n]*\n(?:[ \t]*\^+[ \t]*(?:\n|$))?)?/gm;
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 const CLEAR_SCREEN = /\x1b\[2J|\x1bc|\f/;
 
 let mode: InputMode = 'exited';
 let inputPrompt: string | undefined;
 let history: string[] = [];
+let settings: WebviewSettings = { collapseLongOutput: false, historyPopup: true };
 
 // ---------------------------------------------------------------------------------------------------------
 // Syntax highlighting (input line and echoed commands), with VS Code theme colours where available.
@@ -105,11 +105,12 @@ function newBlock(): Block {
 
 function block(): Block { return current && !current.done ? current : newBlock(); }
 
-/** Collapse a finished block whose output is long; a button shows it all again. */
+/** Collapse a finished block whose output is long (setting collapseLongOutput); a button shows it all again. */
 function finishBlock(): void {
   const b = current;
   if (!b || b.done) { return; }
   b.done = true;
+  if (!settings.collapseLongOutput) { return; }
   const lines = b.out.textContent!.split('\n').length - (b.out.textContent!.endsWith('\n') ? 1 : 0);
   if (lines <= COLLAPSE_LINES) { return; }
   b.el.classList.add('collapsible', 'collapsed');
@@ -145,7 +146,7 @@ function output(text: string, stream: 'out' | 'err'): void {
     text = text.slice(cls.index + cls[0].length);
   }
   text = text.replace(ANSI, '').replace(/\r\n/g, '\n').replace(/\r/g, '');
-  if (stream === 'err') { text = text.replace(HELPER_FRAME, ''); }
+  if (stream === 'err') { text = hideHelperFrames(text); }
   if (!text) { return; }
   const b = block();
   if (stream === 'err') {
@@ -177,6 +178,37 @@ function stdinEcho(text: string, prompt?: string): void {
   span.textContent = text + '\n';
   block().out.append(span);
   scrollDown(true);
+}
+
+/** A command waiting behind the running one: shown dimmed under the output, with × to drop it, until it starts. */
+function showQueued(id: number, text: string, prompt: string): void {
+  const stick = stickToBottom();
+  const row = document.createElement('div');
+  row.className = 'queued';
+  row.dataset.id = String(id);
+  const p = document.createElement('span');
+  p.className = 'cmd-prompt';
+  p.textContent = prompt ? prompt + ' ' : '';
+  const code = document.createElement('span');
+  code.className = 'cmd-code';
+  code.append(highlightedCode(text));
+  const tag = document.createElement('span');
+  tag.className = 'queued-tag';
+  tag.textContent = 'queued';
+  const x = document.createElement('button');
+  x.className = 'queued-cancel';
+  x.title = 'Remove from the queue';
+  x.textContent = '×';
+  x.addEventListener('click', () => { post({ type: 'cancelQueued', id }); editor.focus(); });
+  row.append(p, code, tag, x);
+  queueEl.append(row);
+  queueEl.hidden = false;
+  scrollDown(stick);
+}
+
+function unqueue(id: number): void {
+  queueEl.querySelector(`.queued[data-id="${id}"]`)?.remove();
+  queueEl.hidden = !queueEl.childElementCount;
 }
 
 function info(text: string): void {
@@ -259,11 +291,43 @@ outputEl.addEventListener('click', e => {
     else if (a.dataset.func) { post({ type: 'openFunction', name: a.dataset.func, line }); }
   }
 });
-// A click in the output that does not select text puts the cursor back in the input line.
-outputEl.addEventListener('mouseup', e => {
-  if ((e.target as HTMLElement).closest('a, button')) { return; }
+// A click anywhere (output, empty space, prompt) that does not select text puts the blinking cursor in the input line.
+document.addEventListener('mouseup', e => {
+  if ((e.target as HTMLElement).closest('a, button, .cm-editor, .cm-tooltip, #sigbox, #histpop')) { return; }
   if (!window.getSelection()?.toString()) { editor.focus(); }
 });
+// Drop .mat files (from the VS Code Explorer or an editor tab) to load them. The extension keeps only .mat files.
+const DROP_TYPES = ['application/vnd.code.uri-list', 'resourceurls', 'text/uri-list'];
+const canDrop = (e: DragEvent) => !!e.dataTransfer && DROP_TYPES.some(t => e.dataTransfer!.types.includes(t));
+document.addEventListener('dragover', e => {
+  if (!canDrop(e)) { return; }
+  e.preventDefault();
+  e.dataTransfer!.dropEffect = 'copy';
+  document.body.classList.add('drop-target');
+});
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) { document.body.classList.remove('drop-target'); } });
+document.addEventListener('drop', e => {
+  document.body.classList.remove('drop-target');
+  if (!canDrop(e)) { return; }
+  e.preventDefault();
+  post({ type: 'dropFiles', uris: droppedUris(e.dataTransfer!) });
+});
+
+/** The file URIs in a drop: VS Code's own list (JSON array or lines), else the standard uri-list. */
+function droppedUris(dt: DataTransfer): string[] {
+  for (const t of DROP_TYPES) {
+    const v = dt.getData(t).trim();
+    if (!v) { continue; }
+    if (v.startsWith('[')) { try { return (JSON.parse(v) as unknown[]).map(String); } catch { /* not JSON */ } }
+    return v.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  }
+  return [];
+}
+
+// A click outside the Command History pop-up closes it.
+document.addEventListener('mousedown', e => { if (popOpen() && !(e.target as HTMLElement).closest('#histpop')) { closeHistoryPopup(); } });
+// The webview gets the focus (its tab or title clicked, the view shown, Alt+Tab back): the cursor goes to the input line.
+window.addEventListener('focus', () => { if (!editor.hasFocus) { editor.focus(); } });
 
 // ---------------------------------------------------------------------------------------------------------
 // Requests to the extension (completion, help)
@@ -297,10 +361,33 @@ function fetchHelp(name: string): Promise<HelpResult | null> {
 
 const KIND_TYPE: Record<CompletionItem['kind'], string> = { v: 'variable', f: 'property', k: 'keyword', F: 'function' };
 
+/**
+ * File and folder names, like the MATLAB desktop, for an argument MATLAB declares as a path (load('…, cd …). MATLAB
+ * filters them by what is typed, so the list is asked again on every keystroke (filter: false, no validFor). A folder
+ * ends in  and has no closing quote: accepting it opens the list of what is inside.
+ */
+async function pathCompletion(ctx: CompletionContext, lineFrom: number, code: string, offset: number): Promise<CompletionResult | null> {
+  const r = await request<PathCompletion>(id => ({ type: 'completePaths', id, code, offset }));
+  if (!r || ctx.aborted || r.from > offset) { return null; }
+  const options: Completion[] = r.choices.map(c => ({
+    label: c.label,
+    type: c.folder ? 'folder' : 'file',
+    apply: (view: EditorView, _c: Completion, from: number, to: number) => {
+      view.dispatch({ changes: { from, to, insert: c.insert }, selection: { anchor: from + c.insert.length }, userEvent: 'input.complete' });
+      if (c.folder) { setTimeout(() => startCompletion(view), 0); }
+    },
+  }));
+  return { from: lineFrom + r.from, to: ctx.pos, options, filter: false };
+}
+
 async function completionSource(ctx: CompletionContext): Promise<CompletionResult | null> {
   if (!canQuery()) { return null; }
   const line = ctx.state.doc.lineAt(ctx.pos);
   const before = line.text.slice(0, ctx.pos - line.from);
+  if (maybePathArgument(before)) {
+    const paths = await pathCompletion(ctx, line.from, line.text, ctx.pos - line.from);
+    if (paths || ctx.aborted) { return paths; }
+  }
   const cp = completionPrefix(before);
   if (!cp) { return null; }
   const segment = before.slice(cp.segmentStart);
@@ -398,13 +485,155 @@ function historyMove(view: EditorView, delta: number): boolean {
   }
 }
 
+// ---- Command History pop-up (setting historyPopup), like MATLAB's: Up opens it above the input line with the commands
+// that start with what is typed. Up/Down move, Shift+Up/Down select several, Enter runs, Right/Left/Tab put the
+// selection on the line, Esc closes; typing narrows the list. A click selects, a double-click runs.
+
+const histPop = document.createElement('div');
+histPop.id = 'histpop';
+histPop.hidden = true;
+histPop.setAttribute('role', 'listbox');
+histPop.setAttribute('aria-multiselectable', 'true');
+document.getElementById('inputRow')!.append(histPop);
+let popRows: HistoryRow[] = [];
+let popAnchor = 0;   // selection: rows popAnchor..popActive (either order)
+let popActive = 0;
+const popOpen = () => !histPop.hidden;
+
+function openHistoryPopup(view: EditorView): boolean {
+  if (mode === 'input' || mode === 'pause') { return false; }
+  popRows = historyRows(history, view.state.doc.toString());
+  if (!popRows.length) { return true; }   // nothing matches: stay (MATLAB beeps)
+  popAnchor = popActive = popRows.length - 1;
+  closeCompletion(view);
+  hideSignature();
+  histPop.hidden = false;
+  renderHistoryPopup();
+  return true;
+}
+
+function closeHistoryPopup(): void {
+  histPop.hidden = true;
+  histPop.textContent = '';
+  popRows = [];
+}
+
+/** Typing while it is open narrows the list (closes it when nothing matches). */
+function refilterHistoryPopup(text: string): void {
+  const selected = popRows[popActive]?.text;
+  popRows = historyRows(history, text);
+  if (!popRows.length) { closeHistoryPopup(); return; }
+  const keep = selected === undefined ? -1 : popRows.map(r => r.text).lastIndexOf(selected);
+  popAnchor = popActive = keep >= 0 ? keep : popRows.length - 1;
+  renderHistoryPopup();
+}
+
+/** Build the rows (when the list changes); moving the selection only updates classes (showHistorySelection). */
+function renderHistoryPopup(): void {
+  const list = document.createElement('div');
+  list.className = 'hist-list';
+  popRows.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    row.setAttribute('role', 'option');
+    const count = document.createElement('span');
+    count.className = 'hist-count';
+    count.textContent = r.count > 1 ? `${r.count}x` : '';
+    const code = document.createElement('span');
+    code.className = 'hist-code';
+    code.append(highlightedCode(r.text));
+    row.append(count, code);
+    row.addEventListener('mousedown', e => {
+      e.preventDefault();   // keep the focus in the input line
+      if (e.shiftKey) { popActive = i; } else { popAnchor = popActive = i; }
+      showHistorySelection();
+    });
+    row.addEventListener('dblclick', () => runHistorySelection(editor));
+    list.append(row);
+  });
+  const foot = document.createElement('div');
+  foot.className = 'hist-foot';
+  foot.textContent = 'Enter runs · → puts on the line · Shift+↑↓ selects several · Esc closes';
+  histPop.replaceChildren(list, foot);
+  showHistorySelection();
+}
+
+function showHistorySelection(): void {
+  const [lo, hi] = [Math.min(popAnchor, popActive), Math.max(popAnchor, popActive)];
+  const rows = histPop.querySelector('.hist-list')?.children ?? [];
+  for (let i = 0; i < rows.length; i++) {
+    rows[i].classList.toggle('selected', i >= lo && i <= hi);
+    rows[i].classList.toggle('active', i === popActive);
+    rows[i].setAttribute('aria-selected', String(i >= lo && i <= hi));
+  }
+  rows[popActive]?.scrollIntoView({ block: 'nearest' });
+}
+
+function popSelection(): string[] {
+  const [lo, hi] = [Math.min(popAnchor, popActive), Math.max(popAnchor, popActive)];
+  return popRows.slice(lo, hi + 1).map(r => r.text);
+}
+
+function moveHistoryPopup(view: EditorView, delta: number, extend: boolean): boolean {
+  const next = popActive + delta;
+  if (next >= popRows.length && !extend) { closeHistoryPopup(); return true; }   // Down past the newest: back to the line
+  popActive = Math.max(0, Math.min(popRows.length - 1, next));
+  if (!extend) { popAnchor = popActive; }
+  showHistorySelection();
+  return true;
+}
+
+function runHistorySelection(view: EditorView): boolean {
+  const codes = popSelection();
+  closeHistoryPopup();
+  for (const code of codes) { runCode(code); }
+  setInput(view, '');
+  return true;
+}
+
+function putHistorySelection(view: EditorView): boolean {
+  const text = popSelection().join('\n');
+  closeHistoryPopup();
+  setInput(view, text);
+  view.focus();
+  return true;
+}
+
+/** Keys while the pop-up is open (also used by the test hooks); undefined: not handled, CodeMirror goes on. */
+const popupKeys: Record<string, (v: EditorView) => boolean> = {
+  'ArrowUp': v => moveHistoryPopup(v, -1, false),
+  'ArrowDown': v => moveHistoryPopup(v, 1, false),
+  'Shift-ArrowUp': v => moveHistoryPopup(v, -1, true),
+  'Shift-ArrowDown': v => moveHistoryPopup(v, 1, true),
+  'PageUp': v => moveHistoryPopup(v, -10, false),
+  'PageDown': v => moveHistoryPopup(v, 10, false),
+  'Enter': v => runHistorySelection(v),
+  'ArrowRight': v => putHistorySelection(v),
+  'ArrowLeft': v => putHistorySelection(v),
+  'Tab': v => putHistorySelection(v),
+  'Escape': () => { closeHistoryPopup(); return true; },
+};
+const popupKeymap = Prec.highest(keymap.of(Object.entries(popupKeys).map(([key, run]) => ({ key, run: (v: EditorView) => popOpen() && run(v) }))));
+
+/** Up on the first line: the pop-up (setting historyPopup) or the previous matching command on the line. */
+function historyUp(view: EditorView): boolean {
+  return settings.historyPopup ? openHistoryPopup(view) : historyMove(view, -1);
+}
+
+/** Send one command, as if typed and Enter pressed (it joins the history). */
+function runCode(code: string): void {
+  if (!code.trim()) { return; }
+  post({ type: 'submit', code });
+  if (mode !== 'input' && mode !== 'pause') { history.push(code); }
+}
+
 function submit(view: EditorView): boolean {
   const code = view.state.doc.toString();
   if (!code.trim() && mode !== 'input' && mode !== 'pause') { return true; }
   post({ type: 'submit', code });
   histIndex = -1;
   histDraft = '';
-  if (mode !== 'input' && mode !== 'pause' && code.trim() && history[history.length - 1] !== code) { history.push(code); }
+  if (mode !== 'input' && mode !== 'pause' && code.trim()) { history.push(code); }
   setInput(view, '');
   hintEl.textContent = '';
   return true;
@@ -426,7 +655,7 @@ const inputKeys = Prec.high(keymap.of([
   {
     key: 'ArrowUp',
     run: v => completionStatus(v.state) === 'active' ? false
-      : v.state.doc.lineAt(v.state.selection.main.head).number === 1 ? historyMove(v, -1) : false,
+      : v.state.doc.lineAt(v.state.selection.main.head).number === 1 ? historyUp(v) : false,
   },
   {
     key: 'ArrowDown',
@@ -443,8 +672,9 @@ const inputKeys = Prec.high(keymap.of([
       if (completionStatus(v.state) === 'active') { return acceptCompletion(v); }
       const head = v.state.selection.main.head;
       const line = v.state.doc.lineAt(head);
-      const cp = completionPrefix(line.text.slice(0, head - line.from));
-      if (canQuery() && cp?.prefix) { return startCompletion(v); }
+      const before = line.text.slice(0, head - line.from);
+      const cp = completionPrefix(before);
+      if (canQuery() && (cp?.prefix || maybePathArgument(before))) { return startCompletion(v); }
       return indentMore(v);
     },
   },
@@ -458,9 +688,10 @@ const theme = EditorView.theme({
   '&': { backgroundColor: 'transparent', color: 'inherit', fontSize: 'inherit' },
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': { fontFamily: 'inherit', lineHeight: 'var(--cw-line-height)' },
-  '.cm-content': { padding: '0', caretColor: 'var(--vscode-editorCursor-foreground)' },
+  '.cm-content': { padding: '0', caretColor: 'var(--vscode-editorCursor-foreground, var(--cw-fg))' },
   '.cm-line': { padding: '0' },
-  '.cm-cursor': { borderLeftColor: 'var(--vscode-editorCursor-foreground)' },
+  // [verified] Without a theme cursor colour CodeMirror's default is a 0.8px black line: invisible on a dark theme.
+  '.cm-cursor, .cm-dropCursor': { borderLeft: '2px solid var(--vscode-editorCursor-foreground, var(--cw-fg))', marginLeft: '-1px' },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': { backgroundColor: 'var(--vscode-editor-selectionBackground) !important' },
   '.cm-placeholder': { color: 'var(--vscode-input-placeholderForeground)' },
   '.cm-matchingBracket': { backgroundColor: 'var(--vscode-editorBracketMatch-background)', outline: '1px solid var(--vscode-editorBracketMatch-border)' },
@@ -488,6 +719,7 @@ const editor = new EditorView({
     doc: '',
     extensions: [
       EditorView.cspNonce.of(document.body.dataset.nonce ?? ''),
+      popupKeymap,
       inputKeys,
       undoHistory(),
       drawSelection(),
@@ -502,7 +734,10 @@ const editor = new EditorView({
       theme,
       EditorView.contentAttributes.of({ 'aria-label': 'MATLAB command', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
       EditorView.updateListener.of(u => {
-        if (u.docChanged && !u.transactions.some(tr => tr.annotation(fromHistory))) { histIndex = -1; }
+        if (u.docChanged && !u.transactions.some(tr => tr.annotation(fromHistory))) {
+          histIndex = -1;
+          if (popOpen()) { refilterHistoryPopup(u.state.doc.toString()); }
+        }
         if (u.docChanged || u.selectionSet) { scheduleHint(); }
       }),
     ],
@@ -660,6 +895,7 @@ function setMode(m: InputMode, prompt?: string): void {
     if (document.hasFocus()) { editor.focus(); }
   }
   if (!canQuery()) { closeCompletion(editor); hintEl.textContent = ''; hideSignature(); }
+  if (m === 'input' || m === 'pause') { closeHistoryPopup(); }   // the line now answers input(): no commands
 }
 
 stopEl.addEventListener('click', () => { stop(); editor.focus(); });
@@ -674,11 +910,14 @@ window.addEventListener('message', (e: MessageEvent<ToWebview>) => {
     case 'output': output(m.text, m.stream); break;
     case 'info': info(m.text); break;
     case 'echoInput': stdinEcho(m.text, m.prompt); break;
+    case 'queued': showQueued(m.id, m.text, m.prompt); break;
+    case 'unqueued': unqueue(m.id); break;
     case 'mode': setMode(m.mode, m.prompt); break;
     case 'clear': clearOutput(); break;
     case 'history': history = [...m.entries]; break;
+    case 'settings': settings = m.settings; break;
     case 'focus': editor.focus(); break;
-    case 'completions': case 'help': case 'signature': {
+    case 'completions': case 'help': case 'signature': case 'pathCompletions': {
       const v = m.type === 'completions' ? m.items : m.result;
       waiting.get(m.id)?.(v);
       waiting.delete(m.id);
@@ -705,14 +944,17 @@ async function runTest(id: number, a: TestAction): Promise<void> {
       const fns: Record<string, () => boolean> = {
         'Enter': () => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : submit(v)),
         'Shift-Enter': () => insertNewlineAndIndent(v),
-        'ArrowUp': () => historyMove(v, -1),
+        'ArrowUp': () => historyUp(v),
         'ArrowDown': () => historyMove(v, 1),
         'Escape': () => escapeKey(v),
+        'Shift-ArrowUp': () => false,
+        'ArrowRight': () => false,
         'Alt-ArrowDown': () => flipSignature(1),
         'Tab': () => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : startCompletion(v)),
         'Ctrl-Space': () => startCompletion(v),
       };
-      result = fns[a.key]?.() ?? false;
+      // The Command History pop-up takes its keys first, as its Prec.highest keymap does for real keys.
+      result = (popOpen() && popupKeys[a.key] ? popupKeys[a.key](v) : fns[a.key]?.()) ?? false;
       break;
     }
     case 'clickLink': {
@@ -736,6 +978,19 @@ async function runTest(id: number, a: TestAction): Promise<void> {
         setTimeout(() => editor.contentDOM.dispatchEvent(new MouseEvent('mousemove', ev)), 50);
       }
       result = !!c;
+      break;
+    }
+    case 'drop': {   // a synthetic drop with the data VS Code's Explorer gives
+      const dt = new DataTransfer();
+      dt.setData(a.type, a.data);
+      for (const type of ['dragover', 'drop']) { document.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true })); }
+      result = true;
+      break;
+    }
+    case 'cancelQueued': {
+      const btn = queueEl.querySelectorAll<HTMLElement>('button.queued-cancel')[a.index];
+      result = !!btn;
+      btn?.click();
       break;
     }
     case 'clickStop':
@@ -770,6 +1025,9 @@ function snapshot(): Snapshot {
     signature: sigEl.hidden ? '' : sigEl.textContent ?? '',
     signatureActive: sigEl.hidden ? '' : sigEl.querySelector('.sig-label .active')?.textContent ?? '',
     stopVisible: !stopEl.hidden,
+    queued: [...queueEl.querySelectorAll('.queued .cmd-code')].map(e => e.textContent ?? ''),
+    historyPopup: popRows.map(r => (r.count > 1 ? `${r.count}x ` : '') + r.text),
+    historySelected: popOpen() ? popSelection() : [],
     highlighted: [...classes],
   };
 }

@@ -97,3 +97,35 @@ function inStringOrComment(s: string): boolean {
   }
   return false;
 }
+
+/** Where an unterminated string starts in `s` (the cursor is inside it), or -1 (also -1 in a comment). */
+function openStringStart(s: string): number {
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === '%' || s.startsWith('...', i)) { return -1; }
+    if (isQuoteStart(s, i)) {
+      const end = closeQuote(s, i + 1, s[i]);
+      if (end < 0) { return i; }
+      i = end + 1;
+      continue;
+    }
+    i++;
+  }
+  return -1;
+}
+
+/**
+ * Whether the cursor (end of `linePrefix`) may be in a file or folder argument, so that MATLAB's own completion is
+ * asked for paths: in a quoted argument of a call (`load('da`, `addpath(p, "src\`), or in an argument of command
+ * syntax (`cd ..\da`, `load data`). MATLAB's function signatures decide whether it really is one.
+ */
+export function maybePathArgument(linePrefix: string): boolean {
+  const q = openStringStart(linePrefix);
+  if (q >= 0) {
+    const before = linePrefix.slice(0, q);
+    return /[(,]\s*$/.test(before) && !!callContext(before);
+  }
+  if (inStringOrComment(linePrefix)) { return false; }
+  const m = /^\s*([A-Za-z]\w*)\s+(?![=(]|[-+*/^<>&|~]=?\s)(\S*\s+)*\S*$/.exec(linePrefix);
+  return !!m && !KEYWORDS.has(m[1]) && !/^(else|end|try|otherwise|break|continue)$/.test(m[1]);
+}

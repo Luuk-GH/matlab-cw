@@ -44,7 +44,7 @@ if (real) {
   const extDir = path.join(os.homedir(), '.vscode', 'extensions');
   const official = fs.existsSync(extDir) && fs.readdirSync(extDir).filter(d => /^mathworks\.language-matlab-\d/.test(d)).sort().pop();
   if (!official) { console.error('The official MATLAB extension is not installed.'); process.exit(2); }
-  env = { ...process.env, MCW_IT_RESULT: resultFile, MCW_IT_REAL: '1', MCW_TRACE: '1',
+  env = { ...process.env, MCW_IT_RESULT: resultFile, MCW_IT_REAL: '1', MCW_ANY_MATLAB: '1', MCW_TRACE: '1',
     MCW_LANGUAGE_SERVER: path.join(extDir, official, 'server', 'out', 'index.js') };
   delete env.MCW_SESSION_FILE;
   console.log(`real MATLAB, language server of ${official}`);
@@ -56,6 +56,7 @@ if (real) {
   env = {
     ...process.env,
     MCW_IT_RESULT: resultFile,
+    MCW_ANY_MATLAB: '1',
     MCW_SESSION_FILE: sessionFile,
     MCW_LANGUAGE_SERVER: path.join(root, 'test', 'fake', 'fakeLanguageServer.js'),
     MCW_FAKE_STARTUP_MS: '200',

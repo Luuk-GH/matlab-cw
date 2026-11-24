@@ -1,32 +1,44 @@
 # MATLAB Command Window
 
 A better Command Window for the official MATLAB extension for VS Code: HTML output with clickable error links,
-collapsible output, a completion pop-up, help tooltips and a Stop button. It **attaches to the MATLAB the official
-extension already runs**, so there is one MATLAB, one workspace, shared with the MATLAB terminal, Run (F5), the
+a completion pop-up (also for file and folder names), a Command History pop-up, help tooltips and a Stop button. It
+**attaches to the MATLAB the official extension in the same VS Code window runs**, so there is one MATLAB, one
+workspace, shared with the MATLAB terminal, Run (F5), the
 debugger and the Workspace browser of the official extension, and with AI agents using MathWorks' MCP server.
 
 > **Not affiliated with or endorsed by MathWorks.** MATLAB is a registered trademark of The MathWorks, Inc.
 > This extension needs the official MATLAB extension (`MathWorks.language-matlab`) and a licensed MATLAB.
 
-> **Status: preview.** The connection and engine protocol are verified on MATLAB R2026b (the spike passes); the
-> Command Window itself has not yet been tried with real MATLAB. See `TESTING-WITH-MATLAB.md`.
+> **Status: preview.** Verified on MATLAB R2026b with MATLAB extension 1.3.16 (the spike and the integration tests
+> pass against the real MATLAB); other releases are untested. See `TESTING-WITH-MATLAB.md`.
 
 ## What it does
 
 The *MATLAB CW* tab in the bottom panel:
 
-- **Output:** select and copy with the mouse, errors in red, warnings in yellow, long output collapses
-  (*Show all N lines*), `clc` clears it.
+- **Output:** select and copy with the mouse, errors in red, warnings in yellow, `clc` clears it. Long output is
+  shown in full (`matlabCommandWindow.collapseLongOutput` collapses it to *Show all N lines*). The frames of `run`
+  (how Run File runs a script) are left out of error and warning stacks.
 - **Links:** `Error in myfun (line 12)`, `Error using …`, `File: … Line: …` and file paths open the file at that line.
-- **Input line** with MATLAB highlighting: **Enter** runs, **Shift+Enter** adds a line, **↑/↓** recall earlier
-  commands that start with what you typed, **Esc** clears.
+- **Input line** with MATLAB highlighting and a blinking cursor: **Enter** runs, **Shift+Enter** adds a line,
+  **Esc** clears.
+- **Command History pop-up**, like MATLAB's: **↑** lists earlier commands that start with what you typed (a command
+  repeated right after itself shows once, as `2x`). **↑/↓** move, **Shift+↑/↓** select several, **Enter** runs them in
+  order, **→** (or ←, Tab) puts them on the line to edit, **Esc** closes; typing narrows the list; double-click runs.
+  Turn off `matlabCommandWindow.historyPopup` to recall commands on the line with ↑/↓ instead.
 - **Completion pop-up** from MATLAB itself (variables, fields, functions; **Ctrl+Space** or **Tab**) and a **help
   tooltip** when you hover a name.
+- **File and folder names**, like the MATLAB desktop: in an argument that MATLAB's function signatures declare as a
+  file or folder (`load('`, `cd `, `addpath('`, `genpath('`, `readtable('`, `imread('`, …) the pop-up lists the
+  matching names in MATLAB's current folder, folders first. Accepting a folder (`data\`) lists what is inside it.
+- **Drop a `.mat` file** (from the VS Code Explorer) on the Command Window to `load` it. Other files are ignored.
+  VS Code may not pass on drops from Windows Explorer.
 - **Signature help** like the editor's: while you type a call, a box shows MATLAB's own forms of the function
   (`plot(Y,LineSpec,options)  1 of 6`), the current argument in bold, and what it is (`y-coordinates`,
   `scalar | vector | matrix`). **Alt+↑/↓** or a click on "1 of 6" shows the other forms, **Esc** closes it. Functions
   without signature data (your own) show their help line instead. All of this only asks MATLAB when it is idle.
-- **Stop** button (or Ctrl+C in the input line) while code runs; Enter queues the next command.
+- **Stop** button (or Ctrl+C in the input line) while code runs. Enter queues the next command: queued commands show
+  dimmed under the output (*queued*) until they run; hover one and click **×** to drop it. Stop drops them all.
 - **Never hangs:** `input()` switches the input line to answering, `pause` waits for Enter, `keyboard`/breakpoints
   give a `K>>` prompt. An `input()` or `pause` from a command started elsewhere (the MATLAB terminal) is left to
   that window, because MATLAB sends a command's output only to the window that started it.
@@ -35,6 +47,13 @@ The *MATLAB CW* tab in the bottom panel:
   focus; a file shows as its name (`>> myscript`). When code stops at a breakpoint or asks for `input()`, the Command
   Window stays in front instead of the MATLAB terminal. Turn off `matlabCommandWindow.runInCommandWindow` to give all of this back
   to the MATLAB extension.
+
+- **Workspace beside it:** the first time the Command Window opens, the MATLAB extension's *Workspace* view is put
+  next to it in the panel (VS Code does not let you drop it there yourself). Move it anywhere afterwards; VS Code
+  remembers. `matlabCommandWindow.workspaceBesideCommandWindow` off moves it back to the MATLAB side bar.
+- **Only this window's MATLAB:** it connects only to a MATLAB started by the MATLAB extension in the same VS Code
+  window. A MATLAB that another client shared (for example one that MathWorks' MCP server starts when the shared one
+  is gone, or the MATLAB of another VS Code window) is refused with a message saying who started it.
 
 Everything else (debugger, Workspace, tests, linting, AI agents) stays with MathWorks' tools.
 
@@ -85,12 +104,18 @@ quits MATLAB. Nothing is added to your MATLAB path. Details: `RESEARCH.md`.
 |---|---|---|
 | `matlabCommandWindow.autoConnect` | `true` | Connect when the panel is shown; reconnect when `shareMATLABSession()` runs again. |
 | `matlabCommandWindow.runInCommandWindow` | `true` | F5, Ctrl+Enter and Shift+Enter in `.m` files run in the Command Window instead of the MATLAB extension's terminal. |
+| `matlabCommandWindow.historyPopup` | `true` | ↑ opens the Command History pop-up; off: ↑/↓ recall on the line. |
+| `matlabCommandWindow.collapseLongOutput` | `false` | Collapse output longer than 40 lines once its command finishes. |
+| `matlabCommandWindow.workspaceBesideCommandWindow` | `true` | Put the MATLAB *Workspace* view beside the Command Window (once); off moves it back. |
 | `matlabCommandWindow.languageServerPath` | (the official extension's) | Language server to use (`…/server/out/index.js`). |
 
 ## Troubleshooting
 
 - **"No shared MATLAB session found"**: run `shareMATLABSession()` in the MATLAB terminal (step 3).
 - **"…is no longer running"**: MATLAB was restarted; run `shareMATLABSession()` again.
+- **"The shared MATLAB (process N) was started by …, not by the MATLAB extension in this VS Code window"**: the last
+  `shareMATLABSession()` came from another MATLAB (an MCP server's, a MATLAB desktop, another VS Code window). Run
+  `shareMATLABSession()` again in this window's MATLAB terminal.
 - **Undefined function `shareMATLABSession`**: install the MATLAB Agentic Toolkit / MCP Server Toolbox (step 1).
 - Log: View → Output → *MATLAB Command Window*.
 - Restricted Mode: connecting needs a trusted workspace.
