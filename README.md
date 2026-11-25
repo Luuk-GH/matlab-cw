@@ -12,6 +12,43 @@ debugger and the Workspace browser of the official extension, and with AI agents
 > **Status: preview.** Verified on MATLAB R2026b with MATLAB extension 1.3.16 (the spike and the integration tests
 > pass against the real MATLAB); other releases are untested. See `TESTING-WITH-MATLAB.md`.
 
+## Highlights
+
+### Command History on ↑
+Like MATLAB's: the commands that start with what you typed, `2x` for repeats. Shift+↑ selects several, Enter runs them.
+
+![Command History pop-up](docs/highlights/command-history.gif)
+
+### File and folder names complete
+In any argument that MATLAB declares as a path (`load('`, `cd `, `readtable('`, …), from MATLAB's own completion.
+
+![File name completion](docs/highlights/path-completion.gif)
+
+### Signature help while you type
+MATLAB's forms of the function, the current argument and what it means. Click the ⓘ for the documentation.
+
+![Signature help](docs/highlights/signature-help.gif)
+
+### Errors with links to the code
+Errors in red; `Error in … (line N)` opens the file at that line.
+
+![Errors with links](docs/highlights/errors-and-links.gif)
+
+### F5, Ctrl+Enter and Shift+Enter run in the Command Window
+The editor keeps the focus, and `input()` is answered right in the Command Window.
+
+![Run File with input()](docs/highlights/run-file-input.gif)
+
+### Hover help in `.m` files
+Usage and description from your MATLAB's own `help`, with links to the documentation and the file.
+
+![Editor hover](docs/highlights/editor-hover.gif)
+
+### Long runs: queued commands and Stop
+Output streams in, commands typed meanwhile wait in line (× drops one), Stop interrupts.
+
+![Queued commands and Stop](docs/highlights/queued-and-stop.gif)
+
 ## What it does
 
 The *MATLAB CW* tab in the bottom panel:

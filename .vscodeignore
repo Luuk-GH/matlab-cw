@@ -19,3 +19,6 @@ docs/**
 media/icon.svg
 *.zip
 *.mp4
+*.mat
+**/*.mat
+*.vsix
