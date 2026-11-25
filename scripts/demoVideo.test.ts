@@ -65,6 +65,24 @@ export async function run(): Promise<void> {
     startFolder = await waitFor(() => api.session.queryText('pwd'), 20000);
     await api.session.execute(`cd('${mq(ws)}'); clear A results x t peakValue thr n`);
     await api.session.execute("mcwSamples = rand(1, 100); save('measurements.mat', 'mcwSamples'); clear mcwSamples");
+    // Warm up off camera: a freshly started MATLAB takes longer than the 3 s the Command Window waits for its first
+    // completion and signature data. One call each, waiting as long as it takes (retrying would only queue more work
+    // in MATLAB).
+    for (const [fn, args] of [
+      ['matlabls.internal.getCompletions', ["S = load('me", '', 12]],
+      ['matlabls.internal.getCompletions', ['plot(', '', 5]],
+      ['help', ['linspace']],
+    ] as [string, unknown[]][]) {
+      const t0 = Date.now();
+      const r = await api.session.queryText(fn, args, true, 90000);
+      log.push(`warm-up ${fn}: ${Date.now() - t0} ms`);
+      // Completion and signature help need the MATLAB extension's matlabls package on MATLAB's path (it adds it when
+      // it starts MATLAB): without it the scenes fail, so do not record at all.
+      if (r === undefined && fn.startsWith('matlabls.')) {
+        throw new Error(`${fn} is not available in this MATLAB: start MATLAB from VS Code (the MATLAB extension), or `
+          + 'add <MATLAB extension>/server/matlab to its path');
+      }
+    }
     // The user's own breakpoints (e.g. one in signal_demo.m) would stop the demo at K>>: keep them aside, put back after.
     await api.session.execute('mcwDemoBreakpoints = dbstatus(\'-completenames\'); dbclear all');
     breakpointsSaved = true;

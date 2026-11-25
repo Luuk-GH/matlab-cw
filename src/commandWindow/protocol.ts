@@ -83,6 +83,8 @@ export type TestAction =
   | { kind: 'toggleCollapse'; index: number }
   | { kind: 'clickStop' }
   | { kind: 'cancelQueued'; index: number }
+  /** The output area shrinks to px (as when the panel is restored from maximized); result: distance from the bottom. */
+  | { kind: 'shrinkOutput'; px: number }
   | { kind: 'drop'; type: string; data: string }
   /** A file dragged from outside VS Code (only its bytes, base64), dropped on the input line. */
   | { kind: 'dropFile'; name: string; base64: string; lastModified?: number }

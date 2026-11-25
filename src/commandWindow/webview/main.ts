@@ -89,6 +89,11 @@ function stickToBottom(): boolean {
   return outputEl.scrollHeight - outputEl.scrollTop - outputEl.clientHeight < 40;
 }
 function scrollDown(stick: boolean): void { if (stick) { outputEl.scrollTop = outputEl.scrollHeight; } }
+// The panel resized (restored from maximized, dragged smaller): the browser keeps the distance from the top, which
+// would show the start of the output. Stay at the bottom when the output was scrolled to the bottom before.
+let pinnedToBottom = true;
+outputEl.addEventListener('scroll', () => { pinnedToBottom = stickToBottom(); });
+new ResizeObserver(() => { if (pinnedToBottom) { outputEl.scrollTop = outputEl.scrollHeight; } }).observe(outputEl);
 
 function newBlock(): Block {
   finishBlock();
@@ -1053,6 +1058,16 @@ async function runTest(id: number, a: TestAction): Promise<void> {
       for (const type of types) { window.removeEventListener(type, count); }
       await new Promise(r => setTimeout(r, 100));
       result = { reachedWindow, inputChanged: editor.state.doc.toString() !== before };
+      break;
+    }
+    case 'shrinkOutput': {
+      outputEl.scrollTop = outputEl.scrollHeight;
+      await new Promise(r => setTimeout(r, 50));
+      const old = outputEl.style.maxHeight;
+      outputEl.style.maxHeight = `${a.px}px`;
+      await new Promise(r => setTimeout(r, 150));
+      result = Math.round(outputEl.scrollHeight - outputEl.scrollTop - outputEl.clientHeight);
+      outputEl.style.maxHeight = old;
       break;
     }
     case 'cancelQueued': {

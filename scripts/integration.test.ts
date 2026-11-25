@@ -130,6 +130,8 @@ export async function run(): Promise<void> {
     await cw.test({ kind: 'key', key: 'ArrowRight' });
     s = await snap();
     check('Right puts the selected command on the line', s.input === 'x = 6*7' && s.historyPopup.length === 0, s.input);
+    const fromBottom = await cw.test({ kind: 'shrinkOutput', px: 60 }) as number;
+    check('the output stays at the bottom when the panel gets smaller (e.g. restored from maximized)', fromBottom !== undefined && fromBottom <= 2, String(fromBottom));
     await cw.test({ kind: 'key', key: 'Escape' });
     for (const line of ['mcwA = 1', 'mcwA = mcwA + 1', 'mcwA = mcwA + 1']) { await typeLine(line); await untilMode('ready'); }
     await cw.test({ kind: 'type', text: 'mcwA' });

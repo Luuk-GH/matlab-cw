@@ -39,6 +39,9 @@ fs.writeFileSync(path.join(base, 'user-data', 'User', 'settings.json'), JSON.str
   'MATLAB.telemetry': false,
   // Its Workspace view is not connected in the demo window ("MATLAB Disconnected"): keep it out of the panel.
   'matlabCommandWindow.workspaceBesideCommandWindow': false,
+  // ...and its status bar item would say "MATLAB: Not Connected" the whole time.
+  'workbench.statusBar.visible': false,
+  'git.openRepositoryInParentFolders': 'never',   // no "A git repository was found…" pop-up on camera
 }, null, 1));
 
 const extDir = path.join(os.homedir(), '.vscode', 'extensions');

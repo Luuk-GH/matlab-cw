@@ -1,6 +1,6 @@
 # MATLAB Command Window
 
-A better Command Window for the official MATLAB extension for VS Code: HTML output with clickable error links,
+Command Window for the official MATLAB extension for VS Code: HTML output with clickable error links,
 a completion pop-up (also for file and folder names), a Command History pop-up, help tooltips and a Stop button. It
 **attaches to the MATLAB the official extension in the same VS Code window runs**, so there is one MATLAB, one
 workspace, shared with the MATLAB terminal, Run (F5), the

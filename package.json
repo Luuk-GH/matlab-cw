@@ -3,7 +3,7 @@
   "displayName": "MATLAB Command Window",
   "icon": "media/icon.png",
   "description": "A better Command Window for the official MATLAB extension: HTML output with clickable error links, collapsible output, completion pop-up, help tooltips and Stop, attached to the MATLAB the official extension already runs (no second MATLAB). Not affiliated with or endorsed by MathWorks.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "LuukP",
   "license": "MIT",
   "repository": {

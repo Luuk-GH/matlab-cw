@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 (2026-11-25)
+
+- New icon: an original glossy surface rendered with MATLAB graphics (`scripts/icon/make_icon.m`), without a
+  background, with the vinyl record on top.
+- Marketplace page: highlight GIFs in the README, links to the GitHub repository (github.com/Luuk-GH/matlab-cw).
+- The output stays scrolled to the bottom when the panel gets smaller (e.g. restored from maximized); before, it
+  showed the start of the output.
+
 ## 0.3.0 (2026-11-24)
 
 - Hover help in `.m` files: usage forms and description from the connected MATLAB's `help`, links to the MathWorks
