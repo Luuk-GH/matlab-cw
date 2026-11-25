@@ -15,7 +15,6 @@ dist/**
 !dist/extension.js
 !dist/commandWindow.js
 docs/**
-media/icon.svg
 *.zip
 *.mp4
 *.mat
