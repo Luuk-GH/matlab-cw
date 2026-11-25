@@ -50,6 +50,10 @@ export async function run(): Promise<void> {
   };
   let startFolder: string | undefined;
   let breakpointsSaved = false;
+  // MCW_DEMO_ONLY=errors,f5,hover records just those scenes (e.g. to redo a few highlight GIFs).
+  const only = process.env.MCW_DEMO_ONLY ? new Set(process.env.MCW_DEMO_ONLY.split(',')) : undefined;
+  const want = (key: string) => !only || only.has(key);
+  let ed = vscode.window.activeTextEditor!;
   try {
     // Set up off camera.
     await vscode.commands.executeCommand('workbench.action.closeSidebar');
@@ -73,133 +77,157 @@ export async function run(): Promise<void> {
     fs.writeFileSync(path.join(out, 'start.txt'), String(Date.now()));   // the recorder starts now
     await sleep(1500);
 
-    scene('A real Command Window, attached to the MATLAB the MATLAB extension runs');
-    await command('A = magic(4)');
-    await command('total = sum(A(:))', 1200);
+    if (want('intro')) {
+      scene('A real Command Window, attached to the MATLAB the MATLAB extension runs');
+      await command('A = magic(4)');
+      await command('total = sum(A(:))', 1200);
 
-    scene('Errors in red, with links straight to the code');
-    await command('scale_to_sum([1 2 3])', 1200);
-    const s = await snap();
-    const linkIdx = s.links.findIndex(l => l.func === 'scale_to_sum' && l.line === 4);
-    await panelMax(false);
-    if (linkIdx >= 0) { await cw.test({ kind: 'clickLink', index: linkIdx }); }
-    await sleep(2200);
+    }
+    if (want('errors')) {
+      scene('Errors in red, with links straight to the code');
+      await command('scale_to_sum([1 2 3])', 1200);
+      const s = await snap();
+      const linkIdx = s.links.findIndex(l => l.func === 'scale_to_sum' && l.line === 4);
+      await panelMax(false);
+      if (linkIdx >= 0) { await cw.test({ kind: 'clickLink', index: linkIdx }); }
+      await sleep(2200);
 
-    scene('↑ opens the Command History: Shift+↑ selects several, Enter runs them');
-    await vscode.commands.executeCommand('matlabCommandWindow.show');
-    await panelMax(true);
-    await cw.test({ kind: 'key', key: 'ArrowUp' });
-    await waitFor(async () => (await snap()).historyPopup.length > 0, 5000);
-    await sleep(1300);
-    await cw.test({ kind: 'key', key: 'ArrowUp' });
-    await sleep(700);
-    await cw.test({ kind: 'key', key: 'Shift-ArrowUp' });
-    await sleep(1600);
-    await cw.test({ kind: 'key', key: 'Escape' });
-    await sleep(400);
+    }
+    if (want('history')) {
+      scene('↑ opens the Command History: Shift+↑ selects several, Enter runs them');
+      await vscode.commands.executeCommand('matlabCommandWindow.show');
+      await panelMax(true);
+      await cw.test({ kind: 'key', key: 'ArrowUp' });
+      await waitFor(async () => (await snap()).historyPopup.length > 0, 5000);
+      await sleep(1300);
+      await cw.test({ kind: 'key', key: 'ArrowUp' });
+      await sleep(700);
+      await cw.test({ kind: 'key', key: 'Shift-ArrowUp' });
+      await sleep(1600);
+      await cw.test({ kind: 'key', key: 'Escape' });
+      await sleep(400);
 
-    scene('File and folder names complete, from MATLAB, wherever a function takes a path');
-    await typeSlow("S = load('me");
-    await cw.test({ kind: 'key', key: 'Tab' });
-    await waitFor(async () => (await snap()).completions.length > 0, 8000);
-    await sleep(1600);
-    await cw.test({ kind: 'key', key: 'Enter' });   // accepts measurements.mat
-    await sleep(500);
-    await typeSlow(');');
-    await sleep(300);
-    await enter();
-    await idle();
-    await sleep(500);
-    await command('size(S.mcwSamples)', 1300);
+    }
+    if (want('paths')) {
+      scene('File and folder names complete, from MATLAB, wherever a function takes a path');
+      await typeSlow("S = load('me");
+      await cw.test({ kind: 'key', key: 'Tab' });
+      await waitFor(async () => (await snap()).completions.length > 0, 8000);
+      await sleep(1600);
+      await cw.test({ kind: 'key', key: 'Enter' });   // accepts measurements.mat
+      await sleep(500);
+      await typeSlow(');');
+      await sleep(300);
+      await enter();
+      await idle();
+      await sleep(500);
+      await command('size(S.mcwSamples)', 1300);
 
-    scene('Completion from MATLAB itself');
-    await command("results = struct('alpha', 1, 'beta', 2, 'gamma', 3);", 500);
-    await typeSlow('results.');
-    await cw.test({ kind: 'key', key: 'Ctrl-Space' });
-    await waitFor(async () => (await snap()).completions.includes('alpha'), 8000);
-    await sleep(2200);
-    await esc(3);
+    }
+    if (want('completion')) {
+      scene('Completion from MATLAB itself');
+      await command("results = struct('alpha', 1, 'beta', 2, 'gamma', 3);", 500);
+      await typeSlow('results.');
+      await cw.test({ kind: 'key', key: 'Ctrl-Space' });
+      await waitFor(async () => (await snap()).completions.includes('alpha'), 8000);
+      await sleep(2200);
+      await esc(3);
 
-    scene('Signature help, like in the editor');
-    await typeSlow('linspace(0, ');
-    await waitFor(async () => /linspace\(/.test((await snap()).signature), 8000);
-    await sleep(2500);
-    await esc(3);
-    await typeSlow('plot(');
-    await waitFor(async () => /plot\(/.test((await snap()).signature), 8000);
-    await sleep(1400);
-    await cw.test({ kind: 'key', key: 'Alt-ArrowDown' });
-    await sleep(1600);
-    await esc(3);
+    }
+    if (want('signature')) {
+      scene('Signature help, like in the editor');
+      await typeSlow('linspace(0, ');
+      await waitFor(async () => /linspace\(/.test((await snap()).signature), 8000);
+      await sleep(2500);
+      await esc(3);
+      await typeSlow('plot(');
+      await waitFor(async () => /plot\(/.test((await snap()).signature), 8000);
+      await sleep(1400);
+      await cw.test({ kind: 'key', key: 'Alt-ArrowDown' });
+      await sleep(1600);
+      await esc(3);
 
-    scene('F5 runs the file in the Command Window; input() is answered right there');
-    await panelMax(false);
-    const ed = await vscode.window.showTextDocument(demoDoc);
-    ed.selection = new vscode.Selection(0, 0, 0, 0);
-    await sleep(900);
-    void vscode.commands.executeCommand('matlabCommandWindow.runFile');
-    await waitFor(async () => (await snap()).mode === 'input', 15000);
-    await sleep(900);
-    await typeSlow('0.8');
-    await sleep(400);
-    await enter();
-    await idle();
-    await sleep(1800);
+    }
+    if (want('f5')) {
+      scene('F5 runs the file in the Command Window; input() is answered right there');
+      await panelMax(false);
+      ed = await vscode.window.showTextDocument(demoDoc);
+      ed.selection = new vscode.Selection(0, 0, 0, 0);
+      await sleep(900);
+      void vscode.commands.executeCommand('matlabCommandWindow.runFile');
+      await waitFor(async () => (await snap()).mode === 'input', 15000);
+      await sleep(900);
+      await typeSlow('0.8');
+      await sleep(400);
+      await enter();
+      await idle();
+      await sleep(1800);
 
-    scene('Hover help in .m files, from MATLAB\'s own help');
-    await vscode.window.showTextDocument(demoDoc);
-    ed.selection = new vscode.Selection(1, 6, 1, 6);   // in "linspace"
-    await sleep(500);
-    await vscode.commands.executeCommand('editor.action.showHover');
-    await sleep(3200);
-    await vscode.commands.executeCommand('closeParameterHints').then(undefined, () => undefined);
+    }
+    if (want('hover')) {
+      scene('Hover help in .m files, from MATLAB\'s own help');
+      ed = await vscode.window.showTextDocument(demoDoc);
+      ed.selection = new vscode.Selection(1, 6, 1, 6);   // in "linspace"
+      await sleep(500);
+      await vscode.commands.executeCommand('editor.action.showHover');
+      await sleep(3200);
+      await vscode.commands.executeCommand('closeParameterHints').then(undefined, () => undefined);
 
-    scene('Shift+Enter runs the selection; it joins the Command History');
-    ed.selection = new vscode.Selection(7, 0, 7, 18);   // peakValue = max(x)
-    await sleep(900);
-    await vscode.commands.executeCommand('matlabCommandWindow.runSelection');
-    await idle();
-    await sleep(1200);
-    await cw.test({ kind: 'key', key: 'ArrowUp' });
-    await sleep(1800);
-    await cw.test({ kind: 'key', key: 'Escape' });
-    await vscode.window.showTextDocument(demoDoc);
-    await sleep(400);
+    }
+    if (want('shiftenter')) {
+      scene('Shift+Enter runs the selection; it joins the Command History');
+      ed.selection = new vscode.Selection(7, 0, 7, 18);   // peakValue = max(x)
+      await sleep(900);
+      await vscode.commands.executeCommand('matlabCommandWindow.runSelection');
+      await idle();
+      await sleep(1200);
+      await cw.test({ kind: 'key', key: 'ArrowUp' });
+      await sleep(1800);
+      await cw.test({ kind: 'key', key: 'Escape' });
+      await vscode.window.showTextDocument(demoDoc);
+      await sleep(400);
 
-    scene('Ctrl+Enter runs the current section');
-    await vscode.window.showTextDocument(demoDoc);
-    ed.selection = new vscode.Selection(5, 0, 5, 0);
-    ed.revealRange(new vscode.Range(4, 0, 6, 0));
-    await sleep(1000);
-    await vscode.commands.executeCommand('matlabCommandWindow.runSection');
-    await idle();
-    await sleep(2000);
+    }
+    if (want('section')) {
+      scene('Ctrl+Enter runs the current section');
+      await vscode.window.showTextDocument(demoDoc);
+      ed.selection = new vscode.Selection(5, 0, 5, 0);
+      ed.revealRange(new vscode.Range(4, 0, 6, 0));
+      await sleep(1000);
+      await vscode.commands.executeCommand('matlabCommandWindow.runSection');
+      await idle();
+      await sleep(2000);
 
-    scene('Breakpoints stop at K>>, right in the Command Window');
-    await vscode.commands.executeCommand('matlabCommandWindow.show');
-    await panelMax(true);
-    await command('dbstop in scale_to_sum at 4', 300);
-    await typeSlow('scale_to_sum([2 3 5])');
-    await enter();
-    await waitFor(async () => (await snap()).mode === 'debug', 15000);
-    await sleep(900);
-    await command('total', 900);
-    await command('dbquit', 300);
-    await api.session.execute('dbclear in scale_to_sum');
-    await sleep(600);
+    }
+    if (want('breakpoints')) {
+      scene('Breakpoints stop at K>>, right in the Command Window');
+      await vscode.commands.executeCommand('matlabCommandWindow.show');
+      await panelMax(true);
+      await command('dbstop in scale_to_sum at 4', 300);
+      await typeSlow('scale_to_sum([2 3 5])');
+      await enter();
+      await waitFor(async () => (await snap()).mode === 'debug', 15000);
+      await sleep(900);
+      await command('total', 900);
+      await command('dbquit', 300);
+      await api.session.execute('dbclear in scale_to_sum');
+      await sleep(600);
 
-    scene('Long runs: output streams in, the next commands wait in line, Stop interrupts');
-    await typeSlow('count_forever');
-    await enter();
-    await waitFor(async () => (await snap()).mode === 'busy', 8000);
-    await sleep(1500);
-    await typeSlow('disp(A)');
-    await enter();
-    await waitFor(async () => (await snap()).queued.length > 0, 3000);
-    await sleep(2200);
-    await cw.test({ kind: 'clickStop' });
-    await idle();
-    await sleep(1800);
+    }
+    if (want('long')) {
+      scene('Long runs: output streams in, the next commands wait in line, Stop interrupts');
+      await typeSlow('count_forever');
+      await enter();
+      await waitFor(async () => (await snap()).mode === 'busy', 8000);
+      await sleep(1500);
+      await typeSlow('disp(A)');
+      await enter();
+      await waitFor(async () => (await snap()).queued.length > 0, 3000);
+      await sleep(2200);
+      await cw.test({ kind: 'clickStop' });
+      await idle();
+      await sleep(1800);
+    }
     scene('end');
   } catch (e) {
     log.push(`error: ${(e as Error).stack ?? e}`);

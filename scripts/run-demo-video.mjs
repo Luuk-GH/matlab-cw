@@ -13,6 +13,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const base = path.join(os.tmpdir(), 'mcw-demo-video');
 const marks = path.join(base, 'marks');
 const frames = path.join(base, 'frames');
+// Remove the link to MathWorks' extension (made below) first, so cleaning up can never reach the user's copy.
+for (const link of fs.existsSync(path.join(base, 'extensions')) ? fs.readdirSync(path.join(base, 'extensions')) : []) {
+  const p = path.join(base, 'extensions', link);
+  if (fs.lstatSync(p).isSymbolicLink()) { fs.unlinkSync(p); }
+}
 fs.rmSync(base, { recursive: true, force: true });
 fs.mkdirSync(marks, { recursive: true });
 fs.mkdirSync(frames, { recursive: true });
@@ -29,11 +34,19 @@ fs.writeFileSync(path.join(base, 'user-data', 'User', 'settings.json'), JSON.str
   'terminal.integrated.fontSize': 15,
   'window.commandCenter': false,
   'workbench.layoutControl.enabled': false,
+  // MathWorks' extension is loaded for its MATLAB highlighting only: it must not start a MATLAB of its own.
+  'MATLAB.matlabConnectionTiming': 'never',
+  'MATLAB.telemetry': false,
+  // Its Workspace view is not connected in the demo window ("MATLAB Disconnected"): keep it out of the panel.
+  'matlabCommandWindow.workspaceBesideCommandWindow': false,
 }, null, 1));
 
 const extDir = path.join(os.homedir(), '.vscode', 'extensions');
 const official = fs.readdirSync(extDir).filter(d => /^mathworks\.language-matlab-\d/.test(d)).sort().pop();
 if (!official) { console.error('The official MATLAB extension is not installed.'); process.exit(2); }
+// The demo window's only installed extension: a link to the user's copy of MathWorks' extension.
+fs.mkdirSync(path.join(base, 'extensions'), { recursive: true });
+fs.symlinkSync(path.join(extDir, official), path.join(base, 'extensions', official), 'junction');
 
 const loop = path.join(base, 'capture-loop.ps1');
 fs.writeFileSync(loop, `param([string]$dir, [string]$marker, [string]$stop, [int]$fps)
@@ -87,7 +100,7 @@ delete env.MCW_SESSION_FILE;
 const child = spawn(codeExe, [
   `--extensionDevelopmentPath=${root}`, `--extensionTestsPath=${path.join(root, 'dist', 'demoVideo.test.js')}`,
   `--user-data-dir=${path.join(base, 'user-data')}`, `--extensions-dir=${path.join(base, 'extensions')}`,
-  '--disable-extensions', '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust', '--new-window',
+  '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust', '--new-window',
   path.join(root, 'docs', 'video', 'workspace'),
 ], { stdio: 'ignore', env });
 
@@ -103,6 +116,7 @@ const timer = setInterval(() => {
 const deadline = setTimeout(() => { console.error('demo timed out'); fs.writeFileSync(stopFile, 'stop'); child.kill(); }, 300000);
 child.on('exit', code => {
   clearInterval(timer); clearTimeout(deadline);
+  try { fs.unlinkSync(path.join(base, 'extensions', official)); } catch { /* gone */ }
   fs.writeFileSync(stopFile, 'stop');
   const list = fs.readdirSync(frames).filter(f => f.endsWith('.jpg')).sort();
   fs.writeFileSync(path.join(base, 'frames.json'), JSON.stringify(list));
