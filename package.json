@@ -6,6 +6,14 @@
   "version": "0.3.0",
   "publisher": "LuukP",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Luuk-GH/matlab-cw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Luuk-GH/matlab-cw/issues"
+  },
+  "homepage": "https://github.com/Luuk-GH/matlab-cw#readme",
   "private": true,
   "engines": {
     "vscode": "^1.95.0"
@@ -228,7 +236,7 @@
     "compile": "npm run typecheck && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/commandWindow/webview",
-    "package": "npm run typecheck && node scripts/vsix-readme.mjs && vsce package --allow-missing-repository --no-rewrite-relative-links --readme-path dist/README.vsix.md",
+    "package": "npm run typecheck && vsce package",
     "vscode:prepublish": "node esbuild.mjs --production",
     "test": "npm run test:unit && npm run test:fake && npm run test:integration",
     "test:unit": "node scripts/run-tests.mjs unit",
