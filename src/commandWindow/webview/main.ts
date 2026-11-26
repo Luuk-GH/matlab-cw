@@ -1,8 +1,8 @@
 // The Command Window webview: an HTML output area and a CodeMirror 6 input line. It only renders and
 // edits; everything runs in the extension's shared MATLAB session (see ../provider.ts).
 import { acceptCompletion, autocompletion, closeCompletion, Completion, CompletionContext, CompletionResult,
-  completionStatus, currentCompletions, startCompletion } from '@codemirror/autocomplete';
-import { defaultKeymap, history as undoHistory, historyKeymap, indentMore, insertNewlineAndIndent } from '@codemirror/commands';
+  completionStatus, currentCompletions, moveCompletionSelection, selectedCompletionIndex, setSelectedCompletion, startCompletion } from '@codemirror/autocomplete';
+import { defaultKeymap, deleteCharBackward, history as undoHistory, historyKeymap, indentMore, insertNewlineAndIndent } from '@codemirror/commands';
 import { bracketMatching, HighlightStyle, StreamLanguage, StringStream, syntaxHighlighting } from '@codemirror/language';
 import { Annotation, Compartment, EditorState, Prec } from '@codemirror/state';
 import { drawSelection, EditorView, hoverTooltip, keymap, placeholder, Tooltip } from '@codemirror/view';
@@ -10,7 +10,7 @@ import { tags as t } from '@lezer/highlight';
 import { callContext, completionPrefix, maybePathArgument } from '../../language/matlabSyntax';
 import { historyRows, HistoryRow } from './historyRows';
 import { matlabStreamParser } from './matlabMode';
-import { hideHelperFrames, parseAnchors, LinkHit as Hit } from './anchors';
+import { classifyErrLines, ErrState, hideHelperFrames, parseAnchors, LinkHit as Hit } from './anchors';
 import type { CompletionItem, FromWebview, HelpResult, InputMode, PathCompletion, SignatureHelp, Snapshot, TestAction, ToWebview, WebviewSettings } from '../protocol';
 
 declare function acquireVsCodeApi(): { postMessage(m: FromWebview): void };
@@ -29,6 +29,11 @@ const testHooks = document.body.dataset.testHooks === 'true';
 const COLLAPSE_LINES = 40;
 /** Oldest blocks are dropped beyond this many. */
 const MAX_BLOCKS = 1000;
+/** One command's output keeps its last this many lines (like MATLAB's scroll buffer); earlier lines are dropped. */
+const MAX_BLOCK_LINES = 10000;
+/** Output is put in pieces of about this many lines (each its own element), so adding text stays fast however long
+ *  the output gets: the browser only lays out the last piece again. */
+const CHUNK_LINES = 200;
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 const CLEAR_SCREEN = /\x1b\[2J|\x1bc|\f/;
 
@@ -81,14 +86,23 @@ function highlightedCode(code: string): DocumentFragment {
 // ---------------------------------------------------------------------------------------------------------
 // Output area
 
-interface Block { el: HTMLElement; out: HTMLElement; lines: number; done: boolean; }
-let inWarning = false;   // the previous stderr line belonged to a warning (its "> In ..." trace follows)
+interface Block {
+  el: HTMLElement; out: HTMLElement; lines: number; done: boolean;
+  chunk?: HTMLElement; chunkLines: number; chunkOpen: boolean;   // the piece being filled; its last line unfinished
+  dropped: number; droppedEl?: HTMLElement;                       // lines dropped beyond MAX_BLOCK_LINES
+}
+const chunkLines = new WeakMap<Element, number>();
+const errState: ErrState = { inWarning: false, lineOpen: false };   // stderr colouring, across chunks
 let current: Block | undefined;
 
 function stickToBottom(): boolean {
   return outputEl.scrollHeight - outputEl.scrollTop - outputEl.clientHeight < 40;
 }
-function scrollDown(stick: boolean): void { if (stick) { outputEl.scrollTop = outputEl.scrollHeight; } }
+function scrollDown(stick: boolean): void {
+  const t = performance.now();
+  if (stick) { outputEl.scrollTop = outputEl.scrollHeight; }
+  drawStats.layout += performance.now() - t;
+}
 // The panel resized (restored from maximized, dragged smaller): the browser keeps the distance from the top, which
 // would show the start of the output. Stay at the bottom when the output was scrolled to the bottom before.
 let pinnedToBottom = true;
@@ -104,11 +118,59 @@ function newBlock(): Block {
   el.append(out);
   outputEl.append(el);
   while (outputEl.childElementCount > MAX_BLOCKS) { outputEl.firstElementChild!.remove(); }
-  current = { el, out, lines: 0, done: false };
+  current = { el, out, lines: 0, done: false, chunkLines: 0, chunkOpen: false, dropped: 0 };
   return current;
 }
 
 function block(): Block { return current && !current.done ? current : newBlock(); }
+
+/** Where the next output of a block goes: the current piece, or a new one (only after a finished line). */
+function outTarget(b: Block): HTMLElement {
+  if (!b.chunk || (b.chunkLines >= CHUNK_LINES && !b.chunkOpen)) {
+    // The pieces are block elements: the line end before the next piece is the block break itself (a "\n" left at
+    // the end would add an empty line when the text is copied).
+    if (b.chunk) {
+      dropTrailingNewline(b.chunk);
+      b.chunk.classList.add('full');   // CHUNK_LINES lines: the browser may skip it while out of view (CSS)
+    }
+    b.chunk = document.createElement('div');
+    b.chunk.className = 'chunk';
+    b.out.append(b.chunk);
+    b.chunkLines = 0;
+  }
+  return b.chunk;
+}
+
+function dropTrailingNewline(el: Node): void {
+  let n: Node | null = el.lastChild;
+  while (n && n.nodeType !== Node.TEXT_NODE) { n = n.lastChild; }
+  if (n?.textContent?.endsWith('\n')) { n.textContent = n.textContent.slice(0, -1); }
+}
+
+/** Count the lines just added to the block's current piece; drop the oldest pieces beyond MAX_BLOCK_LINES. */
+function addedOutput(b: Block, text: string): void {
+  let n = 0;
+  for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) { n++; }
+  b.lines += n;
+  b.chunkLines += n;
+  chunkLines.set(b.chunk!, b.chunkLines);
+  b.chunkOpen = !text.endsWith('\n');
+  if (b.lines <= MAX_BLOCK_LINES) { return; }
+  while (b.lines > MAX_BLOCK_LINES) {
+    const first = b.out.querySelector(':scope > .chunk');
+    if (!first || first === b.chunk) { break; }
+    const k = chunkLines.get(first) ?? 0;
+    first.remove();
+    b.lines -= k;
+    b.dropped += k;
+  }
+  if (!b.droppedEl) {
+    b.droppedEl = document.createElement('div');
+    b.droppedEl.className = 'info dropped';
+    b.out.prepend(b.droppedEl);
+  }
+  b.droppedEl.textContent = `… ${b.dropped.toLocaleString('en-US')} earlier lines not shown (the last ${MAX_BLOCK_LINES.toLocaleString('en-US')} are kept)`;
+}
 
 /** Collapse a finished block whose output is long (setting collapseLongOutput); a button shows it all again. */
 function finishBlock(): void {
@@ -116,7 +178,7 @@ function finishBlock(): void {
   if (!b || b.done) { return; }
   b.done = true;
   if (!settings.collapseLongOutput) { return; }
-  const lines = b.out.textContent!.split('\n').length - (b.out.textContent!.endsWith('\n') ? 1 : 0);
+  const lines = b.lines + (b.chunkOpen ? 1 : 0);
   if (lines <= COLLAPSE_LINES) { return; }
   b.el.classList.add('collapsible', 'collapsed');
   const btn = document.createElement('button');
@@ -144,7 +206,9 @@ function echo(text: string, prompt: string): void {
 }
 
 function output(text: string, stream: 'out' | 'err'): void {
+  const tl = performance.now();
   const stick = stickToBottom();
+  drawStats.layout += performance.now() - tl;
   const cls = CLEAR_SCREEN.exec(text);
   if (cls) {   // clc
     clearOutput();
@@ -156,32 +220,82 @@ function output(text: string, stream: 'out' | 'err'): void {
   const b = block();
   if (stream === 'err') {
     // Errors in red, warnings (and their "> In ..." trace) in yellow, line by line.
-    for (const seg of text.split(/(?<=\n)/)) {
+    for (const seg of classifyErrLines(text, errState)) {
       const span = document.createElement('span');
-      const isWarning = /^\s*Warning:/.test(seg) || (inWarning && /^(\s*> In |\s)/.test(seg) && seg.trim() !== '');
-      inWarning = isWarning;
-      span.className = isWarning ? 'warn' : 'err';
+      span.className = seg.warn ? 'warn' : 'err';
       // MATLAB hyperlinks (<a href="matlab:opentoline(...)">) become plain text plus links.
-      const a = parseAnchors(seg);
+      const a = parseAnchors(seg.text);
       span.append(linkify(a.text, true, a.links));
-      b.out.append(span);
+      outTarget(b).append(span);
+      addedOutput(b, seg.text);
     }
   } else {
-    inWarning = false;
-    const a = parseAnchors(text);
-    b.out.append(linkify(a.text, false, a.links));
+    errState.inWarning = false;
+    errState.lineOpen = false;
+    // Fill the current piece up to CHUNK_LINES lines, then the next (a hyperlink never spans lines).
+    let rest = text;
+    while (rest) {
+      const target = outTarget(b);
+      const cut = afterNthNewline(rest, Math.max(1, CHUNK_LINES - b.chunkLines));
+      const piece = cut < 0 ? rest : rest.slice(0, cut);
+      rest = cut < 0 ? '' : rest.slice(cut);
+      const a = parseAnchors(piece);
+      target.append(linkify(a.text, false, a.links));
+      addedOutput(b, piece);
+    }
   }
   scrollDown(stick);
 }
 
+/** Index just after the n-th line end of text, or -1 when it has fewer. */
+function afterNthNewline(text: string, n: number): number {
+  let i = -1;
+  for (let k = 0; k < n; k++) { i = text.indexOf('\n', i + 1); if (i < 0) { return -1; } }
+  return i + 1;
+}
+
+// Output arrives in many messages while code prints a lot: it is queued and drawn once per frame (the first piece at
+// once), so the window keeps answering keys and Stop however fast MATLAB prints.
+let outQueue: { text: string; stream: 'out' | 'err' }[] = [];
+let outScheduled = false;
+let lastOutDraw = 0;
+
+function queueOutput(text: string, stream: 'out' | 'err'): void {
+  drawStats.msgs++;
+  const last = outQueue[outQueue.length - 1];
+  if (last?.stream === stream) { last.text += text; } else { outQueue.push({ text, stream }); }
+  if (outScheduled) { return; }
+  if (performance.now() - lastOutDraw > 16) { drawQueuedOutput(); return; }
+  outScheduled = true;
+  requestAnimationFrame(drawQueuedOutput);
+  setTimeout(drawQueuedOutput, 100);   // requestAnimationFrame does not run while the panel is hidden
+}
+
+function drawQueuedOutput(): void {
+  outScheduled = false;
+  if (!outQueue.length) { return; }
+  lastOutDraw = performance.now();
+  for (const o of outQueue.splice(0)) { output(o.text, o.stream); }
+  drawStats.draws++;
+  const ms = performance.now() - lastOutDraw;
+  drawStats.ms += ms;
+  drawStats.max = Math.max(drawStats.max, ms);
+}
+const drawStats = { draws: 0, ms: 0, max: 0, msgs: 0, layout: 0 };   // for the flood benchmark (test hooks)
+
+/** Stop: what the interrupted code printed but is not drawn yet is dropped (error output is kept). */
+function dropQueuedOutput(): void { outQueue = outQueue.filter(o => o.stream === 'err'); }
+
 function stdinEcho(text: string, prompt?: string): void {
   // MATLAB may or may not print input()'s prompt itself (spike check S8): add it when the output lacks it.
-  const out = block().out;
+  const b = block();
+  const out = outTarget(b);
   if (prompt && !(out.textContent ?? '').endsWith(prompt)) { out.append(prompt); }
   const span = document.createElement('span');
   span.className = 'stdin';
   span.textContent = text + '\n';
-  block().out.append(span);
+  out.append(span);
+  addedOutput(b, text + '\n');
   scrollDown(true);
 }
 
@@ -505,10 +619,10 @@ const fromHistory = Annotation.define<boolean>();
 let histIndex = -1;       // -1: editing a new line
 let histDraft = '';
 
-function setInput(view: EditorView, text: string): void {
+function setInput(view: EditorView, text: string, cursor = text.length): void {
   view.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: text },
-    selection: { anchor: text.length },
+    selection: { anchor: cursor },
     annotations: fromHistory.of(true),
   });
 }
@@ -543,6 +657,7 @@ document.getElementById('inputRow')!.append(histPop);
 let popRows: HistoryRow[] = [];
 let popAnchor = 0;   // selection: rows popAnchor..popActive (either order)
 let popActive = 0;
+let popMoved = false;   // moved through the list with the arrow keys (or a click): typing then edits the selection
 const popOpen = () => !histPop.hidden;
 
 function openHistoryPopup(view: EditorView): boolean {
@@ -550,6 +665,7 @@ function openHistoryPopup(view: EditorView): boolean {
   popRows = historyRows(history, view.state.doc.toString());
   if (!popRows.length) { return true; }   // nothing matches: stay (MATLAB beeps)
   popAnchor = popActive = popRows.length - 1;
+  popMoved = false;
   closeCompletion(view);
   hideSignature();
   histPop.hidden = false;
@@ -591,6 +707,7 @@ function renderHistoryPopup(): void {
     row.addEventListener('mousedown', e => {
       e.preventDefault();   // keep the focus in the input line
       if (e.shiftKey) { popActive = i; } else { popAnchor = popActive = i; }
+      popMoved = true;
       showHistorySelection();
     });
     row.addEventListener('dblclick', () => runHistorySelection(editor));
@@ -598,7 +715,7 @@ function renderHistoryPopup(): void {
   });
   const foot = document.createElement('div');
   foot.className = 'hist-foot';
-  foot.textContent = 'Enter runs · → puts on the line · Shift+↑↓ selects several · Esc closes';
+  foot.textContent = 'Enter runs · → (or typing after ↑↓) puts it on the line · Shift+↑↓ selects several · Esc closes';
   histPop.replaceChildren(list, foot);
   showHistorySelection();
 }
@@ -624,6 +741,7 @@ function moveHistoryPopup(view: EditorView, delta: number, extend: boolean): boo
   if (next >= popRows.length && !extend) { closeHistoryPopup(); return true; }   // Down past the newest: back to the line
   popActive = Math.max(0, Math.min(popRows.length - 1, next));
   if (!extend) { popAnchor = popActive; }
+  popMoved = true;
   showHistorySelection();
   return true;
 }
@@ -636,10 +754,10 @@ function runHistorySelection(view: EditorView): boolean {
   return true;
 }
 
-function putHistorySelection(view: EditorView): boolean {
+function putHistorySelection(view: EditorView, atStart = false): boolean {
   const text = popSelection().join('\n');
   closeHistoryPopup();
-  setInput(view, text);
+  setInput(view, text, atStart ? 0 : text.length);
   view.focus();
   return true;
 }
@@ -654,11 +772,24 @@ const popupKeys: Record<string, (v: EditorView) => boolean> = {
   'PageDown': v => moveHistoryPopup(v, 10, false),
   'Enter': v => runHistorySelection(v),
   'ArrowRight': v => putHistorySelection(v),
-  'ArrowLeft': v => putHistorySelection(v),
+  'ArrowLeft': v => putHistorySelection(v, true),
   'Tab': v => putHistorySelection(v),
   'Escape': () => { closeHistoryPopup(); return true; },
 };
 const popupKeymap = Prec.highest(keymap.of(Object.entries(popupKeys).map(([key, run]) => ({ key, run: (v: EditorView) => popOpen() && run(v) }))));
+
+/** A key that edits text. After moving through the list (↑/↓, a click) it first puts the selection on the line, like
+ *  MATLAB; before that, typing narrows the list. */
+function isEditKey(e: { key: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean }): boolean {
+  if (e.ctrlKey || e.metaKey || e.altKey) { return false; }
+  return e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete';
+}
+function popupEditKey(v: EditorView, e: { key: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean }): void {
+  if (popOpen() && popMoved && isEditKey(e)) { putHistorySelection(v); }
+}
+const popupTyping = Prec.highest(EditorView.domEventHandlers({
+  keydown: (e, v) => { popupEditKey(v, e); return false; },   // the key itself goes on to CodeMirror, on the put line
+}));
 
 /** Up on the first line: the pop-up (setting historyPopup) or the previous matching command on the line. */
 function historyUp(view: EditorView): boolean {
@@ -684,7 +815,28 @@ function submit(view: EditorView): boolean {
   return true;
 }
 
-const stop = () => { post({ type: 'stop' }); return true; };
+const stop = () => {
+  if (mode === 'busy') {
+    dropQueuedOutput();
+    // [measured, R2026b] MATLAB stops at once, but output it printed faster than the language server passes it on
+    // (~3,000 lines/s) still has to arrive before the prompt does; it is skipped, not shown.
+    editor.dispatch({ effects: placeholderSlot.reconfigure(placeholder('Stopping… (output MATLAB printed before Stop is skipped)')) });
+  }
+  post({ type: 'stop' });
+  return true;
+};
+
+/** Completion list: nothing is selected when it opens. Enter runs the line, unless ↑/↓ selected an entry (then Enter
+ *  takes that one); Tab takes the selected entry, else the top one. */
+function enterKey(v: EditorView): boolean {
+  if (completionStatus(v.state) === 'active' && (selectedCompletionIndex(v.state) ?? -1) >= 0) { return acceptCompletion(v); }
+  closeCompletion(v);
+  return submit(v);
+}
+function acceptTopCompletion(v: EditorView): boolean {
+  if ((selectedCompletionIndex(v.state) ?? -1) < 0) { v.dispatch({ effects: setSelectedCompletion(0) }); }
+  return acceptCompletion(v);
+}
 
 /** Esc: close the completion list, else the signature box, else clear the line. */
 function escapeKey(v: EditorView): boolean {
@@ -695,7 +847,7 @@ function escapeKey(v: EditorView): boolean {
 }
 
 const inputKeys = Prec.high(keymap.of([
-  { key: 'Enter', run: v => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : submit(v)) },
+  { key: 'Enter', run: v => enterKey(v) },
   { key: 'Shift-Enter', run: insertNewlineAndIndent },
   {
     key: 'ArrowUp',
@@ -714,7 +866,7 @@ const inputKeys = Prec.high(keymap.of([
   {
     key: 'Tab',
     run: v => {
-      if (completionStatus(v.state) === 'active') { return acceptCompletion(v); }
+      if (completionStatus(v.state) === 'active') { return acceptTopCompletion(v); }
       const head = v.state.selection.main.head;
       const line = v.state.doc.lineAt(head);
       const before = line.text.slice(0, head - line.from);
@@ -748,7 +900,9 @@ const theme = EditorView.theme({
     backgroundColor: 'var(--vscode-editorSuggestWidget-background)', color: 'var(--vscode-editorSuggestWidget-foreground)',
     border: '1px solid var(--vscode-editorSuggestWidget-border)',
   },
-  '.cm-tooltip.cm-tooltip-autocomplete > ul': { fontFamily: 'inherit', maxHeight: '14em' },
+  // At most 6 entries high (fixed row height); the rest scroll.
+  '.cm-tooltip.cm-tooltip-autocomplete > ul': { fontFamily: 'inherit', maxHeight: `${6 * 1.5}em` },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > li': { lineHeight: '1.5em', padding: '0 4px' },
   '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': {
     backgroundColor: 'var(--vscode-editorSuggestWidget-selectedBackground)',
     color: 'var(--vscode-editorSuggestWidget-selectedForeground, inherit)',
@@ -764,6 +918,7 @@ const editor = new EditorView({
     doc: '',
     extensions: [
       EditorView.cspNonce.of(document.body.dataset.nonce ?? ''),
+      popupTyping,
       popupKeymap,
       inputKeys,
       undoHistory(),
@@ -771,7 +926,8 @@ const editor = new EditorView({
       bracketMatching(),
       matlabLanguage,
       syntaxHighlighting(highlightStyle),
-      autocompletion({ override: [completionSource], activateOnTyping: true, icons: true, defaultKeymap: true, maxRenderedOptions: 80 }),
+      autocompletion({ override: [completionSource], activateOnTyping: true, icons: true, defaultKeymap: true, maxRenderedOptions: 80,
+        selectOnOpen: false, interactionDelay: 0 }),
       helpHover,
       placeholderSlot.of(placeholder('Type a MATLAB command')),
       keymap.of([...historyKeymap, ...defaultKeymap]),
@@ -944,7 +1100,7 @@ function setMode(m: InputMode, prompt?: string): void {
   const placeholderText = m === 'busy' ? 'Running… (Enter queues the next command, Stop or Ctrl+C aborts)'
     : m === 'input' ? 'MATLAB is waiting for input: type a value and press Enter'
       : m === 'pause' ? 'Paused: press Enter to continue'
-        : m === 'exited' ? 'Not connected to MATLAB: run shareMATLABSession() in the MATLAB terminal, then type a command here'
+        : m === 'exited' ? 'Not connected, waiting for a shared MATLAB session...'
           : m === 'debug' ? 'Stopped in the debugger: dbstep, dbcont, dbquit, or any command'
             : 'Type a MATLAB command';
   editor.dispatch({ effects: placeholderSlot.reconfigure(placeholder(placeholderText)) });
@@ -962,9 +1118,10 @@ stopEl.addEventListener('click', () => { stop(); editor.focus(); });
 
 window.addEventListener('message', (e: MessageEvent<ToWebview>) => {
   const m = e.data;
+  if (m.type !== 'output') { drawQueuedOutput(); }   // keep the order: queued output first
   switch (m.type) {
     case 'echo': echo(m.text, m.prompt); break;
-    case 'output': output(m.text, m.stream); break;
+    case 'output': queueOutput(m.text, m.stream); return;
     case 'info': info(m.text); break;
     case 'echoInput': stdinEcho(m.text, m.prompt); break;
     case 'queued': showQueued(m.id, m.text, m.prompt); break;
@@ -993,7 +1150,30 @@ async function runTest(id: number, a: TestAction): Promise<void> {
   let result: unknown = true;
   switch (a.kind) {
     case 'snapshot': result = snapshot(); break;
+    case 'blockText': {   // the output of the last command whose line contains `command`, as copying it gives
+      const blocks = [...outputEl.querySelectorAll('.block')].filter(b => b.querySelector('.cmd')?.textContent?.includes(a.command));
+      const pre = blocks[blocks.length - 1]?.querySelector('pre.out');
+      if (!pre) { result = null; break; }
+      const sel = window.getSelection()!;
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      result = sel.toString();
+      sel.removeAllRanges();
+      break;
+    }
+    case 'tail': {
+      const last = outputEl.lastElementChild;
+      const chunk = last?.querySelector('pre.out')?.lastElementChild;
+      const tailText = (chunk?.textContent ?? '').slice(-a.chars);
+      result = { tail: tailText, blockLength: last?.querySelectorAll('.chunk').length ?? 0, mode, input: editor.state.doc.toString(),
+        draw: { ...drawStats, ms: Math.round(drawStats.ms), max: Math.round(drawStats.max), layout: Math.round(drawStats.layout) } };
+      drawStats.draws = drawStats.ms = drawStats.max = drawStats.msgs = drawStats.layout = 0;
+      break;
+    }
     case 'type': {
+      if (a.text) { popupEditKey(editor, { key: a.text[0] }); }   // as the real keydown does
       const end = editor.state.doc.length;
       editor.dispatch({ changes: { from: end, insert: a.text }, selection: { anchor: end + a.text.length }, userEvent: 'input.type' });
       break;
@@ -1001,15 +1181,18 @@ async function runTest(id: number, a: TestAction): Promise<void> {
     case 'key': {
       const v = editor;
       const fns: Record<string, () => boolean> = {
-        'Enter': () => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : submit(v)),
+        'Enter': () => enterKey(v),
         'Shift-Enter': () => insertNewlineAndIndent(v),
-        'ArrowUp': () => historyUp(v),
-        'ArrowDown': () => historyMove(v, 1),
+        // As for real keys: the open completion list takes ↑/↓ first (its keymap has the highest precedence).
+        'ArrowUp': () => (completionStatus(v.state) === 'active' ? moveCompletionSelection(false)(v) : historyUp(v)),
+        'ArrowDown': () => (completionStatus(v.state) === 'active' ? moveCompletionSelection(true)(v) : historyMove(v, 1)),
         'Escape': () => escapeKey(v),
         'Shift-ArrowUp': () => false,
         'ArrowRight': () => false,
         'Alt-ArrowDown': () => flipSignature(1),
-        'Tab': () => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : startCompletion(v)),
+        'Tab': () => (completionStatus(v.state) === 'active' ? acceptTopCompletion(v) : startCompletion(v)),
+        'ArrowLeft': () => false,
+        'Backspace': () => { popupEditKey(v, { key: 'Backspace' }); return deleteCharBackward(v); },
         'Ctrl-Space': () => startCompletion(v),
       };
       // The Command History pop-up takes its keys first, as its Prec.highest keymap does for real keys.
@@ -1065,8 +1248,10 @@ async function runTest(id: number, a: TestAction): Promise<void> {
       await new Promise(r => setTimeout(r, 50));
       const old = outputEl.style.maxHeight;
       outputEl.style.maxHeight = `${a.px}px`;
-      await new Promise(r => setTimeout(r, 150));
-      result = Math.round(outputEl.scrollHeight - outputEl.scrollTop - outputEl.clientHeight);
+      // The ResizeObserver runs with the next rendering, which a window in the background gets later: wait up to 1 s.
+      const gap = () => Math.round(outputEl.scrollHeight - outputEl.scrollTop - outputEl.clientHeight);
+      for (let i = 0; i < 20 && gap() > 2; i++) { await new Promise(r => setTimeout(r, 50)); }
+      result = gap();
       outputEl.style.maxHeight = old;
       break;
     }
@@ -1109,6 +1294,13 @@ function snapshot(): Snapshot {
     signatureActive: sigEl.hidden ? '' : sigEl.querySelector('.sig-label .active')?.textContent ?? '',
     signatureDocLink: !sigEl.hidden && !!sigEl.querySelector('.sig-icon.clickable'),
     stopVisible: !stopEl.hidden,
+    cursor: editor.state.selection.main.head,
+    completionSelected: selectedCompletionIndex(editor.state) ?? -1,
+    completionRowsVisible: (() => {
+      const ul = document.querySelector<HTMLElement>('.cm-tooltip-autocomplete > ul');
+      const li = ul?.querySelector<HTMLElement>('li');
+      return ul && li ? Math.round((ul.clientHeight / li.offsetHeight) * 10) / 10 : 0;
+    })(),
     queued: [...queueEl.querySelectorAll('.queued .cmd-code')].map(e => e.textContent ?? ''),
     historyPopup: popRows.map(r => (r.count > 1 ? `${r.count}x ` : '') + r.text),
     historySelected: popOpen() ? popSelection() : [],

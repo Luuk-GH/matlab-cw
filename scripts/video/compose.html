@@ -32,7 +32,7 @@ function titleCard(icon, a) {
   g.font = `600 76px ${FONT}`; g.fillText('MATLAB Command Window', W / 2, 590);
   g.fillStyle = '#ffb35c'; g.font = `400 40px ${FONT}`; g.fillText('for Visual Studio Code', W / 2, 650);
   g.fillStyle = '#c9d6e3'; g.font = `400 32px ${FONT}`;
-  g.fillText('A better Command Window for the MATLAB extension, attached to the MATLAB it already runs', W / 2, 740);
+  g.fillText('Command Window for the official MATLAB extension, attached to the MATLAB it already runs', W / 2, 740);
   g.globalAlpha = 1;
 }
 function endCard(icon, a) {
@@ -44,7 +44,8 @@ function endCard(icon, a) {
   const steps = [
     '1.  Install MathWorks’ MATLAB extension and the MATLAB Agentic Toolkit',
     '2.  Run  shareMATLABSession()  in MATLAB (e.g. from startup.m)',
-    '3.  Install the .vsix and open the MATLAB Command Window panel',
+    '3.  Install “MATLAB Command Window” from the VS Code Marketplace',
+    '4.  Open the MATLAB CW panel: it connects by itself',
   ];
   g.textAlign = 'left'; g.fillStyle = '#dbe6f0'; g.font = `400 38px ${FONT}`;
   steps.forEach((s, i) => g.fillText(s, 420, 480 + i * 72));

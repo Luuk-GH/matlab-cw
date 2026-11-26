@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.2 (2026-11-26)
+
+- A flood of output no longer freezes the Command Window. Output is drawn once per frame, in pieces the browser
+  skips while they are out of view, and one command keeps its last 10,000 lines. Measured on R2026b: 2,000 lines on
+  screen in under 1 s (was 21 s), 20,000 lines in 6 s (before: not shown within 4 minutes), and the window answers
+  within 0.1 s throughout (was up to 60 s).
+- Stop (or Ctrl+C) during a flood of output ends it on screen at once and says how many lines it skipped. `>>`
+  returns once MATLAB has handed over what it printed before Stop: the language server passes on about 3,000 lines/s.
+- A warning's whole stack is yellow; its later frames (`In f (line 3)` without `>`) were red.
+- Completion pop-up: nothing is selected when it opens. Tab takes the top entry, Enter runs what you typed, and after
+  ↑/↓ into the list Enter takes the selected entry. The list is six entries high.
+- Command History pop-up: once you moved with ↑/↓, typing or Backspace puts the selected command on the line and
+  edits it (typing right after ↑ still narrows the list). ← puts it on the line with the cursor at the start.
+- Ctrl+Shift+Enter runs the current `%%` section and moves the cursor to the next one (*Run and Advance*, as in
+  MATLAB; also at K>>).
+- Ctrl+F10 is *Run to Cursor* in `.m` files while stopped in the debugger.
+- Ctrl+Down / Ctrl+Up go to the next / previous `%%` section in `.m` files.
+- Shorter connection messages (*Connecting to MATLAB…*, *Connected to MATLAB R2026b (process N)*, *Connection to
+  MATLAB ended*); connecting clears the window first. Not connected, the input line says it waits for a shared
+  MATLAB session.
+
 ## 0.3.1 (2026-11-25)
 
 - New icon: an original glossy surface rendered with MATLAB graphics (`scripts/icon/make_icon.m`), without a

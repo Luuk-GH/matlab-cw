@@ -53,17 +53,22 @@ Output streams in, commands typed meanwhile wait in line (× drops one), Stop in
 
 The *MATLAB CW* tab in the bottom panel:
 
-- **Output:** select and copy with the mouse, errors in red, warnings in yellow, `clc` clears it. Long output is
-  shown in full (`matlabCommandWindow.collapseLongOutput` collapses it to *Show all N lines*). The frames of `run`
-  (how Run File runs a script) are left out of error and warning stacks.
+- **Output:** select and copy with the mouse, errors in red, warnings in yellow (with their whole stack), `clc`
+  clears it. Long output is shown in full (`matlabCommandWindow.collapseLongOutput` collapses it to *Show all N
+  lines*); of one command's output the last 10,000 lines are kept. Even a flood of output keeps the window
+  responsive. The frames of `run` (how Run File runs a script) are left out of error and warning stacks.
 - **Links:** `Error in myfun (line 12)`, `Error using …`, `File: … Line: …` and file paths open the file at that line.
 - **Input line** with MATLAB highlighting and a blinking cursor: **Enter** runs, **Shift+Enter** adds a line,
   **Esc** clears.
 - **Command History pop-up**, like MATLAB's: **↑** lists earlier commands that start with what you typed (a command
   repeated right after itself shows once, as `2x`). **↑/↓** move, **Shift+↑/↓** select several, **Enter** runs them in
-  order, **→** (or ←, Tab) puts them on the line to edit, **Esc** closes; typing narrows the list; double-click runs.
+  order, **→** (or Tab) puts them on the line to edit, **←** too with the cursor at the start, **Esc** closes. Typing
+  right after ↑ narrows the list; once you moved with ↑/↓, typing (or Backspace) puts the command on the line and
+  edits it. Double-click runs.
   Turn off `matlabCommandWindow.historyPopup` to recall commands on the line with ↑/↓ instead.
-- **Completion pop-up** from MATLAB itself (variables, fields, functions; **Ctrl+Space** or **Tab**) and a **help
+- **Completion pop-up** from MATLAB itself (variables, fields, functions; **Ctrl+Space** or **Tab**), six entries
+  high. Nothing is selected when it opens: **Tab** takes the top entry, **Enter** runs what you typed; after
+  **↑/↓** into the list, Enter (or Tab) takes the selected entry. A **help
   tooltip** when you hover a name, with a **Documentation** link (the page MATLAB's own `doc` would open, in your
   browser).
 - **Hover help in `.m` files**, from the same MATLAB `help`: usage forms, description, links to the documentation and
@@ -85,14 +90,19 @@ The *MATLAB CW* tab in the bottom panel:
   without signature data (your own) show their help line instead. All of this only asks MATLAB when it is idle.
 - **Stop** button (or Ctrl+C in the input line) while code runs. Enter queues the next command: queued commands show
   dimmed under the output (*queued*) until they run; hover one and click **×** to drop it. Stop drops them all.
+  Stop during a flood of output ends it on screen at once. MATLAB stops at once too, but output it printed faster
+  than the language server passes it on (about 3,000 lines/s, measured) must still arrive first: it is skipped,
+  and `>>` returns when it has arrived.
 - **Never hangs:** `input()` switches the input line to answering, `pause` waits for Enter, `keyboard`/breakpoints
   give a `K>>` prompt. An `input()` or `pause` from a command started elsewhere (the MATLAB terminal) is left to
   that window, because MATLAB sends a command's output only to the window that started it.
 - **Run from the editor into the Command Window:** in a `.m` file **F5** runs the file, **Ctrl+Enter** the current
-  `%%` section, **Shift+Enter** the selection (also in the editor's Run menu and context menu). The editor keeps the
+  `%%` section, **Ctrl+Shift+Enter** the section and moves to the next one (*Run and Advance*), **Shift+Enter**
+  the selection (also in the editor's Run menu and context menu). The editor keeps the
   focus; a file shows as its name (`>> myscript`). When code stops at a breakpoint or asks for `input()`, the Command
   Window stays in front instead of the MATLAB terminal. Turn off `matlabCommandWindow.runInCommandWindow` to give all of this back
-  to the MATLAB extension.
+  to the MATLAB extension. While stopped in the debugger, **Ctrl+F10** is *Run to Cursor*.
+  **Ctrl+Down** / **Ctrl+Up** go to the next / previous section.
 
 - **Workspace beside it:** the first time the Command Window opens, the MATLAB extension's *Workspace* view is put
   next to it in the panel (VS Code does not let you drop it there yourself). Move it anywhere afterwards; VS Code
@@ -163,6 +173,9 @@ quits MATLAB. Nothing is added to your MATLAB path. Details: `RESEARCH.md`.
 - **"The shared MATLAB (process N) was started by …, not by the MATLAB extension in this VS Code window"**: the last
   `shareMATLABSession()` came from another MATLAB (an MCP server's, a MATLAB desktop, another VS Code window). Run
   `shareMATLABSession()` again in this window's MATLAB terminal.
+- **Ctrl+Enter or Ctrl+Shift+Enter still runs in the MATLAB terminal**: your own `keybindings.json` binds these keys
+  to the MATLAB extension's run commands, and your keybindings always win over an extension's. Remove those entries
+  (*Preferences: Open Keyboard Shortcuts (JSON)*). The same goes for F5, Shift+Enter, Ctrl+Up/Down and Ctrl+F10.
 - **Undefined function `shareMATLABSession`**: install the MATLAB Agentic Toolkit / MCP Server Toolbox (step 1).
 - Log: View → Output → *MATLAB Command Window*.
 - Restricted Mode: connecting needs a trusted workspace.

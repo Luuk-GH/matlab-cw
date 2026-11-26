@@ -85,6 +85,13 @@ pre.out {
   word-break: break-word;
 }
 pre.out:empty { display: none; }
+/* Output comes in pieces of 200 lines. The browser skips laying out and painting the full pieces outside the view:
+   without this, adding a line to a 10,000-line output took ~30 ms (measured), with it well under 1 ms. Only full
+   pieces: a piece not drawn yet counts as 200 lines high (exact unless lines wrap). */
+pre.out > .chunk.full {
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(200 * 1em * var(--cw-line-height, 1.4));
+}
 .err { color: var(--cw-error); }
 .warn { color: var(--cw-warning); }
 .dbg { color: var(--cw-dim); }

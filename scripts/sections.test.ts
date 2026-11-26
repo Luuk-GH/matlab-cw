@@ -1,6 +1,6 @@
 // Unit checks for MATLAB code sections (Run Section). Run: npm run test:unit
 import * as assert from 'assert';
-import { isSectionHeader, onlyComments, sectionAt } from '../src/language/sections';
+import { isSectionHeader, nextSectionStart, onlyComments, previousSectionStart, sectionAt } from '../src/language/sections';
 
 assert.ok(isSectionHeader('%% Load data'));
 assert.ok(isSectionHeader('  %%'));
@@ -27,6 +27,16 @@ assert.deepStrictEqual(sectionAt(file, 5), { start: 4, end: 5, title: 'Plot it' 
 assert.deepStrictEqual(sectionAt(file, 7), { start: 6, end: 7, title: '' }, 'untitled last section');
 assert.deepStrictEqual(sectionAt(['x = 1;', 'y = 2;'], 1), { start: 0, end: 1, title: '' }, 'no headers: whole file');
 assert.deepStrictEqual(sectionAt(file, 99), { start: 6, end: 7, title: '' }, 'line past the end is clamped');
+
+assert.strictEqual(nextSectionStart(file, 0), 1);
+assert.strictEqual(nextSectionStart(file, 2), 4, 'from inside a section');
+assert.strictEqual(nextSectionStart(file, 4), 6, 'from a header');
+assert.strictEqual(nextSectionStart(file, 7), undefined, 'last section');
+assert.strictEqual(previousSectionStart(file, 7), 4);
+assert.strictEqual(previousSectionStart(file, 5), 1, 'from inside a section');
+assert.strictEqual(previousSectionStart(file, 1), 0, 'to the code above the first header');
+assert.strictEqual(previousSectionStart(file, 0), undefined, 'first section');
+assert.strictEqual(nextSectionStart(['x = 1;'], 0), undefined, 'no headers');
 
 assert.ok(onlyComments('%% Title\n% note\n\n   '));
 assert.ok(!onlyComments('%% Title\nx = 1;'));

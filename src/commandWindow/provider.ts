@@ -17,6 +17,9 @@ const WORKSPACE_PLACED_KEY = 'matlabCommandWindow.workspacePlaced';
 const HISTORY_MAX = 1000;
 /** Rendered messages kept for replay when the webview is (re)created: about this many characters. */
 const REPLAY_CHARS = 2_000_000;
+/** Output is sent to the webview at most this often: the first piece at once, what follows within this time together
+ *  (a flood of output is then a few large messages instead of thousands of small ones). */
+const OUTPUT_BATCH_MS = 16;
 
 /**
  * The HTML Command Window: a webview in the bottom panel that shows the shared session (same process and
@@ -30,6 +33,12 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
   private ready = false;
   private replay: ToWebview[] = [];
   private replayChars = 0;
+  private pendingOut: { text: string; stream: 'out' | 'err' }[] = [];
+  private flushTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastFlush = 0;
+  /** After Stop: output still arriving from the interrupted code is skipped, until the next prompt. */
+  private skipOutput = false;
+  private skippedLines = 0;
   private mode: InputMode = 'exited';
   private inputPrompt: string | undefined;
   private basePrompt = '>>';   // 'K>>' while stopped in the debugger
@@ -126,7 +135,22 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
 
   unqueueCommand(id: number): void { this.record({ type: 'unqueued', id }); }
 
-  writeOutput(text: string, stream: 'out' | 'err'): void { this.record({ type: 'output', text, stream }); }
+  writeOutput(text: string, stream: 'out' | 'err'): void {
+    if (this.skipOutput && stream === 'out') { this.skippedLines += text.split(String.fromCharCode(10)).length - 1; return; }
+    const last = this.pendingOut[this.pendingOut.length - 1];
+    if (last?.stream === stream) { last.text += text; } else { this.pendingOut.push({ text, stream }); }
+    if (this.flushTimer) { return; }
+    const wait = OUTPUT_BATCH_MS - (Date.now() - this.lastFlush);
+    if (wait <= 0) { this.flushOutput(); } else { this.flushTimer = setTimeout(() => this.flushOutput(), wait); }
+  }
+
+  /** Send the output collected so far (also before any other message, which keeps the order). */
+  private flushOutput(): void {
+    if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = undefined; }
+    if (!this.pendingOut.length) { return; }
+    this.lastFlush = Date.now();
+    for (const o of this.pendingOut.splice(0)) { this.record({ type: 'output', text: o.text, stream: o.stream }); }
+  }
 
   showPrompt(kind: 'ready' | 'debug'): void {
     this.basePrompt = kind === 'debug' ? 'K>>' : '>>';
@@ -149,6 +173,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
 
   /** Clear the output area (the session and its workspace are not touched). */
   clear(): void {
+    this.pendingOut = [];
     this.replay = [];
     this.replayChars = 0;
     this.post({ type: 'clear' });
@@ -172,13 +197,23 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
   // ---------- internals ----------
 
   private setMode(mode: InputMode, prompt?: string): void {
+    if (mode !== 'busy' && this.skipOutput) {
+      this.skipOutput = false;
+      if (this.skippedLines) { this.info(`(${this.skippedLines.toLocaleString('en-US')} lines of output after Stop skipped)`); }
+      this.skippedLines = 0;
+    }
     this.mode = mode;
     this.inputPrompt = prompt;
     this.post({ type: 'mode', mode, prompt });
   }
 
   private record(msg: ToWebview): void {
-    this.replay.push(msg);
+    const prev = this.replay[this.replay.length - 1];
+    if (msg.type === 'output' && prev?.type === 'output' && prev.stream === msg.stream && prev.text.length < 65536) {
+      this.replay[this.replay.length - 1] = { ...prev, text: prev.text + msg.text };   // keeps the replay list short
+    } else {
+      this.replay.push(msg);
+    }
     this.replayChars += 'text' in msg ? msg.text.length : 0;
     while (this.replayChars > REPLAY_CHARS && this.replay.length > 1) {
       const old = this.replay.shift()!;
@@ -188,6 +223,7 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
   }
 
   private post(msg: ToWebview): void {
+    if (msg.type !== 'output' && msg.type !== 'test') { this.flushOutput(); }
     if (this.view && this.ready) { void this.view.webview.postMessage(msg); }
   }
 
@@ -206,7 +242,8 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
           this.ready = true;
           this.post({ type: 'settings', settings: webviewSettings() });
           this.post({ type: 'history', entries: this.history });
-          for (const r of this.replay) { this.post(r); }
+          this.flushOutput();   // into the replay first; posting below must not add to the list it walks
+          for (const r of [...this.replay]) { this.post(r); }
           this.post({ type: 'mode', mode: this.mode, prompt: this.inputPrompt });
           break;
         case 'submit':
@@ -214,6 +251,8 @@ export class CommandWindowProvider implements vscode.WebviewViewProvider, Consol
           await this.session.submitFromWindow(m.code);
           break;
         case 'stop':
+          // Drop what the interrupted code printed but was not sent yet, and what still arrives until the prompt.
+          if (this.mode === 'busy') { this.pendingOut = this.pendingOut.filter(o => o.stream === 'err'); this.skipOutput = true; }
           await this.session.interrupt();
           break;
         case 'dropFiles':

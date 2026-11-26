@@ -77,8 +77,12 @@ export type FromWebview =
 /** Test hooks (integration tests only; the webview ignores them unless built with test hooks enabled). */
 export type TestAction =
   | { kind: 'snapshot' }
+  /** A light snapshot for floods: the last `chars` of the output, its length, mode and input line. */
+  | { kind: 'tail'; chars: number }
+  /** The output of the last command whose line contains `command`: selected and read as a copy would (its text). */
+  | { kind: 'blockText'; command: string }
   | { kind: 'type'; text: string }
-  | { kind: 'key'; key: 'Enter' | 'Shift-Enter' | 'ArrowUp' | 'ArrowDown' | 'Escape' | 'Tab' | 'Ctrl-Space' | 'Alt-ArrowDown' | 'Shift-ArrowUp' | 'ArrowRight' }
+  | { kind: 'key'; key: 'Enter' | 'Shift-Enter' | 'ArrowUp' | 'ArrowDown' | 'Escape' | 'Tab' | 'Ctrl-Space' | 'Alt-ArrowDown' | 'Shift-ArrowUp' | 'ArrowRight' | 'ArrowLeft' | 'Backspace' }
   | { kind: 'clickLink'; index: number }
   | { kind: 'toggleCollapse'; index: number }
   | { kind: 'clickStop' }
@@ -110,4 +114,7 @@ export interface Snapshot {
   historyPopup: string[];  // rows of the open Command History pop-up ("2x cmd" for repeats), [] when closed
   historySelected: string[]; // its selected commands
   highlighted: string[];   // token classes used in the input line (syntax highlighting)
+  cursor: number;          // cursor offset in the input line
+  completionSelected: number;    // selected entry of the completion list (-1: none)
+  completionRowsVisible: number; // how many entries high the completion list is
 }

@@ -7,7 +7,7 @@ assert.strictEqual(inputPromptText(['Enter a number: ']), 'Enter a number: ');
 assert.strictEqual(inputPromptText('Name: '), 'Name: ');
 assert.strictEqual(inputPromptText({ promptString: 'x? ' }), 'x? ');
 assert.strictEqual(inputPromptText(undefined), '');
-import { hideHelperFrames, linkTarget, parseAnchors } from '../src/commandWindow/webview/anchors';
+import { classifyErrLines, hideHelperFrames, linkTarget, parseAnchors } from '../src/commandWindow/webview/anchors';
 import { fileFromWhich, functionDeclaration, parseHelp } from '../src/language/helpText';
 import { callContext, completionPrefix } from '../src/language/matlabSyntax';
 import { matlabString, textOf } from '../src/sessionText';
@@ -101,6 +101,23 @@ console.log('parsing: all assertions passed');
   assert.strictEqual(hideHelperFrames(err), 'Error using f\nboom\nError in s (line 3)\n    f()\n    ^^^\n');
   assert.strictEqual(hideHelperFrames('Error in run (line 100)\nError in x (line 1)\n'), 'Error in x (line 1)\n', 'never eats the next frame');
   assert.strictEqual(hideHelperFrames('In running (line 3)\nIn myrun (line 4)\n'), 'In running (line 3)\nIn myrun (line 4)\n', 'other names kept');
+}
+
+// ---- classifyErrLines: a warning's whole backtrace is yellow, errors red ----
+{
+  const warnOf = (chunks: string[]) => {
+    const st = { inWarning: false, lineOpen: false };
+    return chunks.flatMap(c => classifyErrLines(c, st)).map(l => ((l.warn ? 'W ' : 'E ') + l.text.trimEnd()).trimEnd());
+  };
+  // The user's output (R2026b, a script run with run()): the frames after the first have no "> " and no indent.
+  assert.deepStrictEqual(warnOf(['Warning: The name "a" matches multiple I/O channels.\n> In ltipack/LabeledIOModel/name2index (line 1044)\nIn () (line 128)\nIn WELLE v6 TMD Design (line 64)\n']),
+    ['W Warning: The name "a" matches multiple I/O channels.', 'W > In ltipack/LabeledIOModel/name2index (line 1044)', 'W In () (line 128)', 'W In WELLE v6 TMD Design (line 64)']);
+  assert.deepStrictEqual(warnOf(['Warning: x\n> In f (line 3)\n  In g (line 9)\nError using h\nboom\n']),
+    ['W Warning: x', 'W > In f (line 3)', 'W   In g (line 9)', 'E Error using h', 'E boom'], 'indented frames; an error after it is red');
+  assert.deepStrictEqual(warnOf(['Warning: x\n> In f (line 3)\nIn g (li', 'ne 9)\nIn h (line 1)\n']),
+    ['W Warning: x', 'W > In f (line 3)', 'W In g (li', 'W ne 9)', 'W In h (line 1)'], 'a line cut between two chunks keeps its colour');
+  assert.deepStrictEqual(warnOf(['Error using f\nIn the input (line 2)\n']), ['E Error using f', 'E In the input (line 2)'], '"In ..." after an error stays red');
+  assert.deepStrictEqual(warnOf(['Warning: x\n> In f (line 3)\n', '\n', 'Error in s (line 1)\n']), ['W Warning: x', 'W > In f (line 3)', 'E', 'E Error in s (line 1)']);
 }
 
 // ---- maybePathArgument: when to ask MATLAB for file/folder completions ----

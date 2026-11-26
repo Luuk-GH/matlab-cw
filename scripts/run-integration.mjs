@@ -32,7 +32,7 @@ if (real) {
 }
 const args = [
   `--extensionDevelopmentPath=${root}`,
-  `--extensionTestsPath=${path.join(root, 'dist', 'integration.test.js')}`,
+  `--extensionTestsPath=${path.join(root, process.argv.find(a => a.startsWith('--tests='))?.slice(8) ?? path.join('dist', 'integration.test.js'))}`,
   `--user-data-dir=${path.join(base, 'user-data')}`,
   `--extensions-dir=${path.join(base, 'extensions')}`,
   '--disable-extensions', '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust', '--new-window',
@@ -44,7 +44,7 @@ if (real) {
   const extDir = path.join(os.homedir(), '.vscode', 'extensions');
   const official = fs.existsSync(extDir) && fs.readdirSync(extDir).filter(d => /^mathworks\.language-matlab-\d/.test(d)).sort().pop();
   if (!official) { console.error('The official MATLAB extension is not installed.'); process.exit(2); }
-  env = { ...process.env, MCW_IT_RESULT: resultFile, MCW_IT_REAL: '1', MCW_ANY_MATLAB: '1', MCW_TRACE: '1',
+  env = { ...process.env, MCW_IT_RESULT: resultFile, MCW_IT_REAL: '1', MCW_ANY_MATLAB: '1', MCW_TRACE: process.argv.includes('--no-trace') ? '0' : '1',
     MCW_LANGUAGE_SERVER: path.join(extDir, official, 'server', 'out', 'index.js') };
   delete env.MCW_SESSION_FILE;
   console.log(`real MATLAB, language server of ${official}`);

@@ -73,6 +73,27 @@ const ERROR_FRAME = new RegExp(String.raw`^Error in ${HELPER}(?:\n|$)(?:(?!Error
 // A warning's backtrace: "> In f (line 3)" for the first frame, "  In g (line 9)" for the next ones (no code lines).
 const WARNING_FRAME = new RegExp(String.raw`^[ \t]*(?:> )?In ${HELPER}[ \t]*(?:\n|$)`, 'gm');
 
+/** Colouring state of the error stream, kept across output chunks. */
+export interface ErrState { inWarning: boolean; lineOpen: boolean }
+
+/**
+ * Split error-stream text into lines (each keeps its \n) and say which belong to a warning (yellow) and which to an
+ * error (red). A warning's backtrace ("> In f (line 3)", then "In g (line 9)" or "  In g (line 9)") stays yellow; a
+ * line that a chunk cut in two keeps the colour of its first part.
+ */
+export function classifyErrLines(text: string, st: ErrState): { text: string; warn: boolean }[] {
+  const out: { text: string; warn: boolean }[] = [];
+  for (const seg of text.split(/(?<=\n)/)) {
+    if (!seg) { continue; }
+    const warn = st.lineOpen ? st.inWarning
+      : /^\s*Warning:/.test(seg) || (st.inWarning && seg.trim() !== '' && /^(\s*(> )?In |\s)/.test(seg));
+    st.inWarning = warn;
+    st.lineOpen = !seg.endsWith('\n');
+    out.push({ text: seg, warn });
+  }
+  return out;
+}
+
 /** Remove the stack frames of run() and of the extension's helpers from error output (text with \n line ends). */
 export function hideHelperFrames(text: string): string {
   return text.replace(ERROR_FRAME, '').replace(WARNING_FRAME, '');

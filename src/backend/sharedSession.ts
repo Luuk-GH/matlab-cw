@@ -52,7 +52,7 @@ export function readSharedSession(file = sessionFilePath(), alive: (pid: number)
     return { ok: false, reason: 'invalid', file, message: `The shared-session file lacks port, certificate or apiKey: ${file}` };
   }
   if (pid && !alive(pid)) {
-    return { ok: false, reason: 'stale', file, message: `The MATLAB that was shared (process ${pid}) is no longer running.` };
+    return { ok: false, reason: 'stale', file, message: `The shared MATLAB (process ${pid}) is no longer running.` };
   }
   return {
     ok: true,

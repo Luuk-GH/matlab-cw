@@ -61,6 +61,7 @@ export async function run(): Promise<void> {
     check('connects to the shared MATLAB automatically', !!(await waitFor(() => api.session.state === 'idle', 20000)), api.session.state);
     let s = await untilText(real ? /Connected to MATLAB R20\d\d[ab]/ : /Connected to MATLAB R2099z/);
     check('says it is connected (and to which MATLAB)', !!s, (await snap()).text.slice(-300));
+    check('on connecting, the window is cleared: only the Connected line remains', !!s && /^\s*Connected to MATLAB R20\d\d[a-z] \(process \d+\)\s*(>>\s*)?$/.test(s.text), JSON.stringify(s?.text.slice(0, 300)));
     // Real MATLAB: remember its current folder, to put it back at the end.
     const startFolder = real ? await waitFor(() => api.session.queryText('pwd'), 20000) : undefined;
     if (real) {
@@ -133,6 +134,38 @@ export async function run(): Promise<void> {
     const fromBottom = await cw.test({ kind: 'shrinkOutput', px: 60 }) as number;
     check('the output stays at the bottom when the panel gets smaller (e.g. restored from maximized)', fromBottom !== undefined && fromBottom <= 2, String(fromBottom));
     await cw.test({ kind: 'key', key: 'Escape' });
+    const clearLine = async () => { for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); } };
+    // Typing right after Up narrows the list; after moving with Up/Down, a key first puts the command on the line.
+    await typeLine('x = 7*6'); await untilMode('ready');
+    await cw.test({ kind: 'type', text: 'x' });
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    const wide = (await snap()).historyPopup.length;
+    await cw.test({ kind: 'type', text: ' = 6' });
+    s = await snap();
+    check('typing right after Up narrows the Command History pop-up', s.input === 'x = 6' && s.historyPopup.length > 0
+      && s.historyPopup.length <= wide && s.historyPopup.every(r => /^(\d+x )?x = 6/.test(r)), `${s.input} | ${JSON.stringify(s.historyPopup)}`);
+    await clearLine();
+    await cw.test({ kind: 'type', text: 'x =' });
+    await cw.test({ kind: 'key', key: 'ArrowUp' });    // opens: newest selected (x = 7*6)
+    await cw.test({ kind: 'key', key: 'ArrowUp' });    // moves to the one before (x = 6*7)
+    const picked = (await snap()).historySelected[0];
+    await cw.test({ kind: 'type', text: '+1' });
+    s = await snap();
+    check('after moving with Up, typing puts the command on the line and adds the key', picked === 'x = 6*7' && s.input === 'x = 6*7+1' && s.historyPopup.length === 0, `${picked} | ${s.input}`);
+    await clearLine();
+    await cw.test({ kind: 'type', text: 'x =' });
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    await cw.test({ kind: 'key', key: 'Backspace' });
+    s = await snap();
+    check('after moving, Backspace edits the selected command', s.input === 'x = 6*' && s.historyPopup.length === 0, s.input);
+    await clearLine();
+    await cw.test({ kind: 'type', text: 'x =' });
+    await cw.test({ kind: 'key', key: 'ArrowUp' });
+    await cw.test({ kind: 'key', key: 'ArrowLeft' });
+    s = await snap();
+    check('Left puts the selected command on the line with the cursor at the start', s.input === 'x = 7*6' && s.cursor === 0 && s.historyPopup.length === 0, `${s.input} @${s.cursor}`);
+    await clearLine();
     for (const line of ['mcwA = 1', 'mcwA = mcwA + 1', 'mcwA = mcwA + 1']) { await typeLine(line); await untilMode('ready'); }
     await cw.test({ kind: 'type', text: 'mcwA' });
     await cw.test({ kind: 'key', key: 'ArrowUp' });
@@ -154,7 +187,7 @@ export async function run(): Promise<void> {
     await cw.test({ kind: 'type', text: 'x =' });
     await cw.test({ kind: 'key', key: 'ArrowUp' });
     s = await snap();
-    check('with historyPopup off, Up recalls history on the line', s.input === 'x = 6*7' && s.historyPopup.length === 0, s.input);
+    check('with historyPopup off, Up recalls history on the line', s.input === 'x = 7*6' && s.historyPopup.length === 0, s.input);
     await cw.test({ kind: 'key', key: 'Escape' });
     await vscode.workspace.getConfiguration('matlabCommandWindow').update('historyPopup', undefined, vscode.ConfigurationTarget.Global);
 
@@ -230,13 +263,49 @@ export async function run(): Promise<void> {
       const [typed, pick, after] = real ? ["readtable('err", 'error_demo.m', "readtable('error_demo.m'"] : ['cd sc', 'scripts\\', 'cd scripts\\'];
       await cw.test({ kind: 'type', text: typed });
       await cw.test({ kind: 'key', key: 'Tab' });
-      s = await waitFor(async () => { const x = await snap(); return x.completions.includes(pick) ? x : undefined; }, 5000);
+      s = await waitFor(async () => { const x = await snap(); return x.completions.includes(pick) ? x : undefined; }, real ? 15000 : 5000);   // a just-started MATLAB is slow the first time
       check('file/folder names complete in a path argument', !!s, JSON.stringify((await snap()).completions));
-      await sleep(200);   // CodeMirror ignores accepting within its interactionDelay (75 ms) after the list opens
+      await cw.test({ kind: 'key', key: 'Tab' });
+      s = await snap();
+      check('Tab puts the top name on the line', s.input === after, s.input);
+      for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
+    }
+
+    // ---- completion keys: nothing selected at first; Tab takes the top entry, Enter runs the line unless ↑/↓ chose one ----
+    {
+      const open = async (text: string) => {
+        await cw.test({ kind: 'type', text });
+        await cw.test({ kind: 'key', key: 'Ctrl-Space' });
+        return waitFor(async () => { const x = await snap(); return x.completions.length ? x : undefined; }, 5000);
+      };
+      s = await open('myStr');
+      check('the completion list opens with nothing selected', !!s && s.completionSelected === -1, String(s?.completionSelected));
+      await cw.test({ kind: 'key', key: 'Tab' });
+      s = await snap();
+      check('Tab takes the top entry', s.input === 'myStruct' && s.completions.length === 0, s.input);
+      for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
+      s = await open('myStr');
+      await cw.test({ kind: 'key', key: 'Enter' });
+      s = await untilText(/^>> myStr$/m);
+      check('Enter with the list open runs what is typed (not the suggestion)', !!s && s.input === '', JSON.stringify((await snap()).text.slice(-200)));
+      await untilMode('ready');
+      s = await open('my');
+      const list = s?.completions ?? [];
+      await cw.test({ kind: 'key', key: 'ArrowDown' });
+      await cw.test({ kind: 'key', key: 'ArrowDown' });
+      const chosen = list[1 % Math.max(1, list.length)];
+      s = await snap();
+      check('Down moves into the list', s.completionSelected === 1 % Math.max(1, list.length), String(s.completionSelected));
       await cw.test({ kind: 'key', key: 'Enter' });
       s = await snap();
-      check('accepting a name puts it on the line', s.input === after, s.input);
+      check('after Down, Enter takes the selected entry', !!chosen && s.input === chosen, `${s.input} vs ${chosen} of ${JSON.stringify(list)}`);
       for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
+      if (real) {
+        s = await open('plot');
+        check('the completion list is at most 6 entries high (the rest scroll)', !!s && s.completions.length > 6 && s.completionRowsVisible > 5 && s.completionRowsVisible <= 6.05,
+          `${s?.completionRowsVisible} rows for ${s?.completions.length}`);
+        for (let i = 0; i < 3; i++) { await cw.test({ kind: 'key', key: 'Escape' }); }
+      }
     }
 
     // ---- input(), keyboard, Stop ----
@@ -282,6 +351,12 @@ export async function run(): Promise<void> {
       const keys = (ext.packageJSON.contributes.keybindings as { key: string; when: string }[]);
       const debugOk = (key: string) => !/matlab\.isDebugging/.test(keys.find(k => k.key === key)?.when ?? 'matlab.isDebugging');
       check('Shift+Enter and Ctrl+Enter also apply while debugging, F5 does not', debugOk('shift+enter') && debugOk('ctrl+enter') && !debugOk('f5'));
+      const rtc = (keys as { key: string; when: string; command: string }[]).find(k => k.key === 'ctrl+f10');
+      check('Ctrl+F10 is Run to Cursor in .m files while stopped in the debugger',
+        rtc?.command === 'editor.debug.action.runToCursor' && /inDebugMode/.test(rtc.when) && /editorLangId == matlab/.test(rtc.when), JSON.stringify(rtc));
+      const rna = (keys as { key: string; when: string; command: string }[]).find(k => k.key === 'ctrl+shift+enter');
+      check('Ctrl+Shift+Enter is Run Section and Advance, also while debugging',
+        rna?.command === 'matlabCommandWindow.runSectionAndAdvance' && debugOk('ctrl+shift+enter'), JSON.stringify(rna));
       const kbDoc = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument({ language: 'matlab', content: 'kbSel = kb + 41' }));
       kbDoc.selection = new vscode.Selection(0, 0, 0, 15);
       await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSelection')), 15000);
@@ -312,7 +387,49 @@ export async function run(): Promise<void> {
     check('Stop interrupts the run', !!s && s.stopVisible === false, (await snap()).mode);
     check('Stop drops the queued commands too', !!s && s.queued.length === 0 && !/^>> disp\((111|222)\)$/m.test(s.text), String(s?.queued));
 
+    // ---- a flood of output: shown to the end, the oldest lines dropped beyond 10,000, the window keeps answering ----
+    {
+      type Tail = { tail: string; blockLength: number; mode: string; input: string };
+      const tail = async () => (await cw.test({ kind: 'tail', chars: 300 }, 5000)) as Tail | undefined;
+      await typeLine("for mcwI = 1:30000, fprintf('flood %d\\n', mcwI); end");
+      let slow = 0;
+      const shown = await waitFor(async () => {
+        const t0 = Date.now(); const t = await tail(); slow = Math.max(slow, Date.now() - t0);
+        return t?.tail.includes('flood 30000\n') ? t : undefined;
+      }, 120000);
+      check('30,000 lines of output are shown to the last one', !!shown);
+      check('the window keeps answering during a flood of output (under 1 s)', slow < 1000, `${slow} ms`);
+      s = await untilMode('ready', 60000);
+      // Read as copying it would (selected): also the pieces the browser does not render while they are out of view.
+      const blockText = (await cw.test({ kind: 'blockText', command: 'for mcwI = 1:30000' })) as string ?? '';
+      const nums = [...blockText.matchAll(/^flood (\d+)$/gm)].map(m => +m[1]);
+      check('beyond 10,000 lines the oldest are dropped, with a note', /earlier lines not shown/.test(blockText) && nums[0] > 1
+        && nums.length > 9500 && nums.length <= 10000 && nums[nums.length - 1] === 30000, `${nums.length} lines, ${nums[0]}..${nums[nums.length - 1]}: ${blockText.slice(0, 120)}`);
+      check('copying the output gives every line once, in order, with no empty lines between its pieces',
+        nums.every((n, i) => i === 0 || n === nums[i - 1] + 1) && !/\n\n/.test(blockText.slice(blockText.indexOf('flood'))), JSON.stringify(/flood \d+\n\n[\s\S]{0,20}/.exec(blockText)?.[0]));
+      // Stop during an endless flood: hardly any more output appears, and >> comes back.
+      await typeLine("mcwI = 0; while true, mcwI = mcwI + 1; fprintf('endless %d\\n', mcwI); end");
+      await untilMode('busy');
+      await sleep(real ? 2000 : 1000);
+      await cw.test({ kind: 'clickStop' });
+      const lastShown = Number(/endless (\d+)\n?$/.exec((await tail())?.tail ?? '')?.[1] ?? 0);
+      s = await untilMode('ready', 120000);
+      check('Stop ends an endless flood of output (>> comes back)', !!s, (await snap()).mode);
+      const endless = (await cw.test({ kind: 'blockText', command: 'while true' })) as string ?? '';
+      const lastAfter = Math.max(0, ...[...endless.matchAll(/^endless (\d+)$/gm)].map(m => +m[1]));
+      check('after Stop, (almost) no more output of the flood is shown', lastShown > 0 && lastAfter - lastShown < (real ? 300 : 2000), `${lastShown} -> ${lastAfter}`);
+      check('says that output after Stop was skipped', /lines of output after Stop skipped/.test(s?.text.slice(-300) ?? ''), JSON.stringify(s?.text.slice(-200)));
+    }
+
     // ---- Run File / Section / Selection from the editor go to the Command Window, the editor keeps focus ----
+    if (real) {   // the fake MATLAB prints no backtraces
+      await typeLine('warn_demo');
+      s = await untilText(/Warning: mcw demo warning[\s\S]*In warn_demo \(line 3\)/);
+      await untilMode('ready');
+      s = await snap();
+      check("a warning's whole backtrace is yellow, also the frames after the first", !!s && /In warn_demo>inner \(line 7\)/.test(s.text)
+        && !/warn_demo|mcw demo warning/.test(s.errorText), JSON.stringify({ text: s?.text.slice(-200), red: s?.errorText.slice(-200) }));
+    }
     const demo = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(path.join(dir, 'error_demo.m')));
     await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runFile')), 15000);
     s = await untilText(/^>> error_demo$[\s\S]*Error in error_demo \(line 3\)/m);
@@ -329,6 +446,43 @@ export async function run(): Promise<void> {
     demo.selection = new vscode.Selection(0, 0, 0, 0);
     await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSection')), 15000);
     check('Run Section runs the section at the cursor', !!(await untilText(/>> % error_demo\.m: section lines 1–\d/)), JSON.stringify((await snap()).text.slice(-500)));
+    // Run and Advance (Ctrl+Shift+Enter): runs the section, then the cursor goes to the next %% line; repeated, it
+    // runs the sections in turn; in the last section the cursor stays.
+    {
+      await untilMode('ready');
+      const rna = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument({ language: 'matlab',
+        content: '%% First part\nrnaA = 1;\n\n%% Second part\nrnaB = rnaA + 1;\n%% Third part\nrnaC = rnaB + 1;' }));
+      rna.selection = new vscode.Selection(1, 2, 1, 2);
+      await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSectionAndAdvance')), 15000);
+      const ran1 = !!(await untilText(/>> % Untitled-\d+: section "First part"/));
+      check('Run and Advance runs the section and moves the cursor to the next %% line',
+        ran1 && rna.selection.active.line === 3 && rna.selection.active.character === 0, JSON.stringify({ line: rna.selection.active.line, text: (await snap()).text.slice(-300) }));
+      await untilMode('ready');
+      await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSectionAndAdvance')), 15000);
+      const ran2 = !!(await untilText(/>> % Untitled-\d+: section "Second part"/));
+      await untilMode('ready');
+      await withLimit(Promise.resolve(vscode.commands.executeCommand('matlabCommandWindow.runSectionAndAdvance')), 15000);
+      const ran3 = !!(await untilText(/>> % Untitled-\d+: section "Third part"/));
+      check('pressed again, it runs the next sections; in the last one the cursor stays', ran2 && ran3 && rna.selection.active.line === 5,
+        JSON.stringify({ line: rna.selection.active.line, text: (await snap()).text.slice(-300) }));
+      if (real) {
+        await untilMode('ready');
+        await typeLine('disp(rnaC)');
+        check('the sections ran in order (in MATLAB)', !!(await untilText(/^\s*3$/m)), JSON.stringify((await snap()).text.slice(-200)));
+        await api.session.execute('clear rnaA rnaB rnaC');
+      }
+      // Ctrl+Down / Ctrl+Up: next / previous section (cursor on line 5, the third section's header).
+      const go = async (cmd: string) => { await vscode.commands.executeCommand(cmd); return rna.selection.active.line; };
+      const ups = [await go('matlabCommandWindow.previousSection'), await go('matlabCommandWindow.previousSection'), await go('matlabCommandWindow.previousSection')];
+      rna.selection = new vscode.Selection(1, 4, 1, 4);
+      const downs = [await go('matlabCommandWindow.nextSection'), await go('matlabCommandWindow.nextSection'), await go('matlabCommandWindow.nextSection')];
+      check('Ctrl+Up / Ctrl+Down go to the previous / next section (and stop at the first / last)',
+        JSON.stringify(ups) === '[3,0,0]' && JSON.stringify(downs) === '[3,5,5]', JSON.stringify({ ups, downs }));
+      const keys = (ext.packageJSON.contributes.keybindings as { key: string; command: string }[]);
+      check('Ctrl+Down / Ctrl+Up are bound in .m files', keys.some(k => k.key === 'ctrl+down' && k.command === 'matlabCommandWindow.nextSection')
+        && keys.some(k => k.key === 'ctrl+up' && k.command === 'matlabCommandWindow.previousSection'));
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    }
 
     // ---- dropping a .mat file loads it (other files are ignored) ----
     {
@@ -429,6 +583,8 @@ export async function run(): Promise<void> {
     check('a stale share is explained (run shareMATLABSession())', !!s, (await snap()).text.slice(-300));
     fs.writeFileSync(sessionFile, saved);   // like running shareMATLABSession() again
     check('reconnects when MATLAB is shared again', !!(await waitFor(() => api.session.state === 'idle', 10000)), api.session.state);
+    s = await untilText(/Connected to MATLAB/);
+    check('reconnecting clears the window (the stale-share note is gone)', !!s && !/no longer running/.test(s.text), JSON.stringify(s?.text.slice(0, 300)));
     }
     await typeLine('disp(123)');
     check('works after reconnecting', !!(await untilText(/\s123\n/)));

@@ -3,7 +3,7 @@ import { CommandWindowProvider, registerCommandWindow } from './commandWindow/pr
 import { registerOpenDoc } from './docLink';
 import { registerEditorHover } from './editorHover';
 import { KeepInFront, keepCommandWindowInFront } from './keepInFront';
-import { runFile, runSection, runSelection } from './runInCommandWindow';
+import { goToSection, runFile, runSection, runSelection } from './runInCommandWindow';
 import { ReportedError, SessionManager } from './session';
 
 let session: SessionManager | undefined;
@@ -29,6 +29,9 @@ export function activate(context: vscode.ExtensionContext): CommandWindowApi {
   reg('matlabCommandWindow.interrupt', () => s.interrupt());
   reg('matlabCommandWindow.runFile', () => runFile(s));
   reg('matlabCommandWindow.runSection', () => runSection(s));
+  reg('matlabCommandWindow.runSectionAndAdvance', () => runSection(s, true));
+  reg('matlabCommandWindow.nextSection', () => goToSection(1));
+  reg('matlabCommandWindow.previousSection', () => goToSection(-1));
   reg('matlabCommandWindow.runSelection', () => runSelection(s));
   reg('matlabCommandWindow.copyShareCommand', async () => {
     await vscode.env.clipboard.writeText('shareMATLABSession()');

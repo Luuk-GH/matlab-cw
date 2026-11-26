@@ -17,8 +17,7 @@ export interface CommandWindowReveal { reveal(preserveFocus: boolean): void; isV
 
 /** How to share a MATLAB session (shown when there is none). */
 export const SHARE_HINT =
-  'To connect, run shareMATLABSession() in the MATLAB that the MATLAB extension in this VS Code window runs (its MATLAB terminal). ' +
-  'It comes with MathWorks\' MATLAB MCP Server Toolbox (installed by the MATLAB Agentic Toolkit, R2023a or newer).';
+  'Run shareMATLABSession() in the MATLAB terminal to connect (needs MathWorks\' MATLAB extension and MATLAB Agentic Toolkit).';
 
 /**
  * The Command Window's connection to an EXISTING MATLAB: the one shared with shareMATLABSession(), normally the
@@ -270,7 +269,8 @@ export class SessionManager implements vscode.Disposable {
     const lookup = readSharedSession();
     if (!lookup.ok) {
       const msg = `${lookup.message} ${SHARE_HINT}`;
-      this.forViews(v => v.info(msg));
+      if (report || msg !== this.lastRefusal) { this.forViews(v => v.info(msg)); }   // not again on every automatic retry
+      this.lastRefusal = msg;
       this.log.info(`${lookup.message} (${lookup.file})`);
       if (report) {
         void vscode.window.showInformationMessage(`MATLAB Command Window: ${lookup.message} Run shareMATLABSession() in the MATLAB terminal, then try again.`,
@@ -342,12 +342,14 @@ export class SessionManager implements vscode.Disposable {
       this.connected = undefined;
       this.helpCache.clear();
       this.forViews(v => v.resetInput());
-      this.forViews(v => v.info(`Connection to MATLAB ended (${reason}). It reconnects when MATLAB is shared again, or type a command to retry.`));
+      this.log.info(`connection to MATLAB ended (${reason})`);
+      this.forViews(v => v.info('Connection to MATLAB ended'));
       this.updateStatus('disconnected');
     });
 
     this.updateStatus('connecting');
-    this.forViews(v => v.info(`Connecting to MATLAB (process ${shared.pid || '?'}) through ${describeServer(server)}…`));
+    this.log.info(`connecting to MATLAB (pid ${shared.pid || '?'}) through ${describeServer(server)}`);
+    this.forViews(v => v.info('Connecting to MATLAB…'));
     try {
       await s.start();
     } catch (err) {
@@ -365,7 +367,8 @@ export class SessionManager implements vscode.Disposable {
     this.connected = shared;
     this.lastRefusal = undefined;
     this.log.info(`connected to MATLAB ${s.release ?? ''} (pid ${shared.pid}) via ${describeServer(server)}`);
-    this.forViews(v => v.info(`Connected to MATLAB ${s.release ?? ''} (process ${shared.pid || '?'}), shared with the MATLAB extension.`.replace('  ', ' ')));
+    // A fresh start: only this line remains (the user's request).
+    this.forViews(v => { v.clearScreen(); v.info(`Connected to MATLAB ${s.release ?? ''} (process ${shared.pid || '?'})`.replace('  ', ' ')); });
     if (s.state === 'idle' || s.state === 'debug') { this.forViews(v => v.showPrompt(s.state === 'debug' ? 'debug' : 'ready')); }
     this.updateStatus(s.state);
     return s;

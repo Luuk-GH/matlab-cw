@@ -28,6 +28,18 @@ export function sectionAt(lines: string[], line: number): Section {
   return { start, end, title: m ? (m[1] ?? '') : '' };
 }
 
+/** The first line of the next section (Ctrl+Down), or undefined in the last section. */
+export function nextSectionStart(lines: string[], line: number): number | undefined {
+  const sec = sectionAt(lines, line);
+  return sec.end + 1 < lines.length ? sec.end + 1 : undefined;
+}
+
+/** The first line of the previous section (Ctrl+Up), or undefined in the first section. */
+export function previousSectionStart(lines: string[], line: number): number | undefined {
+  const sec = sectionAt(lines, line);
+  return sec.start > 0 ? sectionAt(lines, sec.start - 1).start : undefined;
+}
+
 /** True when the code has nothing to run (only blank lines and % comments). */
 export function onlyComments(code: string): boolean {
   return code.split(/\r?\n/).every(l => /^\s*(%.*)?$/.test(l));

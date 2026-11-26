@@ -3,7 +3,7 @@
   "displayName": "MATLAB Command Window",
   "icon": "media/icon.png",
   "description": "Command Window for the official MATLAB extension: HTML output with clickable error links, completion (also file and folder names), a Command History pop-up, help tooltips, hover help in .m files and Stop. Attaches to the MATLAB the official extension already runs (no second MATLAB). Not affiliated with or endorsed by MathWorks.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "LuukP",
   "license": "MIT",
   "repository": {
@@ -83,6 +83,21 @@
       {
         "command": "matlabCommandWindow.runSection",
         "title": "Run Section in Command Window",
+        "category": "MATLAB Command Window"
+      },
+      {
+        "command": "matlabCommandWindow.runSectionAndAdvance",
+        "title": "Run Section and Advance in Command Window",
+        "category": "MATLAB Command Window"
+      },
+      {
+        "command": "matlabCommandWindow.nextSection",
+        "title": "Go to Next Section",
+        "category": "MATLAB Command Window"
+      },
+      {
+        "command": "matlabCommandWindow.previousSection",
+        "title": "Go to Previous Section",
         "category": "MATLAB Command Window"
       },
       {
@@ -189,7 +204,7 @@
         "matlabCommandWindow.runInCommandWindow": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Run MATLAB files in this Command Window: **F5** runs the file, **Ctrl+Enter** the current `%%` section, **Shift+Enter** the selection, instead of the MATLAB extension's terminal. The editor keeps the focus. Ctrl+Enter and Shift+Enter also work at K>> (F5 stays the debugger's Continue). When MATLAB stops at a breakpoint, the Command Window (K>>) stays in front instead of the MATLAB terminal. Turn off to give these keys back to the MATLAB extension."
+          "markdownDescription": "Run MATLAB files in this Command Window: **F5** runs the file, **Ctrl+Enter** the current `%%` section, **Ctrl+Shift+Enter** the section and moves to the next one, **Shift+Enter** the selection, instead of the MATLAB extension's terminal. The editor keeps the focus. Ctrl+Enter, Ctrl+Shift+Enter and Shift+Enter also work at K>> (F5 stays the debugger's Continue). When MATLAB stops at a breakpoint, the Command Window (K>>) stays in front instead of the MATLAB terminal. Turn off to give these keys back to the MATLAB extension."
         }
       }
     },
@@ -229,6 +244,28 @@
         "key": "shift+enter",
         "command": "matlabCommandWindow.runSelection",
         "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed && editorHasSelection && !editorHasMultipleSelections"
+      },
+      {
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "command": "matlabCommandWindow.runSectionAndAdvance",
+        "when": "editorTextFocus && editorLangId == matlab && config.matlabCommandWindow.runInCommandWindow && !findInputFocussed && !replaceInputFocussed"
+      },
+      {
+        "key": "ctrl+down",
+        "command": "matlabCommandWindow.nextSection",
+        "when": "editorTextFocus && editorLangId == matlab && !suggestWidgetVisible && !parameterHintsVisible"
+      },
+      {
+        "key": "ctrl+up",
+        "command": "matlabCommandWindow.previousSection",
+        "when": "editorTextFocus && editorLangId == matlab && !suggestWidgetVisible && !parameterHintsVisible"
+      },
+      {
+        "key": "ctrl+f10",
+        "mac": "cmd+f10",
+        "command": "editor.debug.action.runToCursor",
+        "when": "editorTextFocus && editorLangId == matlab && inDebugMode && debugState == 'stopped' && !findInputFocussed && !replaceInputFocussed"
       }
     ]
   },
@@ -242,6 +279,7 @@
     "test:unit": "node scripts/run-tests.mjs unit",
     "test:fake": "node scripts/run-tests.mjs fake",
     "test:integration": "node esbuild.mjs && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-integration.mjs",
+    "bench:flood": "node esbuild.mjs && esbuild scripts/flood.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/flood.test.js --log-level=warning && node scripts/run-integration.mjs --real --no-trace --tests=dist/flood.test.js",
     "spike:build": "esbuild spike/spike.ts --bundle --platform=node --target=node18 --outfile=spike/matlab-spike.js --log-level=warning",
     "test:vsix": "npm run package && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-vsix-test.mjs",
     "test:real": "node esbuild.mjs && esbuild scripts/integration.test.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/integration.test.js --log-level=warning && node scripts/run-integration.mjs --real",

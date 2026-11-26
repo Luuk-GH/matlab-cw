@@ -161,6 +161,27 @@ MATLAB's `getReferencePage` (internal, as `doc.m` uses it; workspace variables m
 `help/matlab/ref/linspace.html` is a 404 (checked with curl), hence the click-time query. mathworks.com answers 403
 to Node's own HTTP requests (bot protection), so the extension makes none.
 
+## Output floods (measured on R2026b with `npm run bench:flood`, 2026-11-26)
+
+`for i = 1:N, fprintf('flood line %d …\n', i); end` (about 67 characters per line):
+
+| | before 0.3.2 | 0.3.2 |
+|---|---|---|
+| 2,000 lines on screen | 21 s, window unresponsive 15 s | 0.9 s, window answers within 0.2 s |
+| 20,000 lines on screen | not within 4 min | 6.2 s, answers within 0.05 s |
+| 100,000 lines on screen | not within 4 min | 30 s, answers within 0.06 s |
+| typing during a flood | — | shown within 0.02 s |
+
+- MATLAB's own loop takes 0.05 s / 0.6 s / 3 s; the extension host spends 5 / 26 / 106 ms on all messages (event-loop
+  lag under 30 ms). The rest is the rate at which output reaches the extension: about 3,300 lines/s, one message per
+  line, through MathWorks' language server and MATLAB's connector (WebSocket through our relay, 0.2–0.75 MB/s;
+  language server CPU 35–45 %, MATLAB 180 %). Not our code; the official MATLAB terminal uses the same path.
+- Before 0.3.2 the webview spent ~0.7 ms per line on layout: appending to a pre of thousands of lines laid all of it
+  out again (30 ms per append at 10,000 lines, reproduced in a plain browser page). With 200-line `.chunk` divs and
+  `content-visibility: auto`: 0.08 ms.
+- Stop during an endless flood: MATLAB stops at once (it printed ~97,000 lines in the 3 s before Stop), the flood
+  stops on screen at once, and `>>` came back after 21 s: the time to pass on the ~97,000 lines (skipped, not shown).
+
 ## Still unverified
 
 0. Editor hover and Documentation link by hand: how the hover looks, and that a click opens the page in the browser

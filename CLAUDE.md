@@ -5,6 +5,12 @@ request): Run File/Section/Selection in the Command Window (src/runInCommandWind
 because the official Run always uses and focuses its terminal (no setting for that). Likewise src/keepInFront.ts brings the Command Window back
 when the official extension shows its MATLAB terminal at a breakpoint or on input(). Also requested: hover help in
 .m editors (src/editorHover.ts, the official LS has no hover) from the same MATLAB help as the Command Window.
+Ctrl+Shift+Enter = Run Section and Advance, Ctrl+Down/Up = next/previous section (as in MATLAB), and a keybinding only: Ctrl+F10 = VS Code's Run to Cursor
+in .m files while debugging (package.json).
+Output floods: [measured] MATLAB -> language server -> us passes ~3,300 lines/s (MathWorks' side; MATLAB itself
+prints ~40k/s), so after Stop the prompt waits for that backlog (skipped, not shown). The webview draws once per frame
+into 200-line .chunk divs with content-visibility:auto (layout 30 ms -> <1 ms at 10k lines); measure with
+npm run bench:flood (real MATLAB). innerText skips off-screen chunks: tests read output via the blockText hook.
 It ATTACHES to the MATLAB the official extension runs (no second MATLAB): user runs shareMATLABSession() (MCP Server
 Toolbox) -> sessionDetails.json {port, certificate, apiKey, pid}; we start our own instance of the official extension's
 language server with --matlabUrl through src/backend/connectorProxy.ts (adds mwapikey, trusts the cert). See RESEARCH.md §8.

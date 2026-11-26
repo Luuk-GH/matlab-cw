@@ -4,7 +4,7 @@
 // matlabCommandWindow.runInCommandWindow is on (package.json). The editor keeps the focus.
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { onlyComments, sectionAt } from './language/sections';
+import { nextSectionStart, onlyComments, previousSectionStart, sectionAt } from './language/sections';
 import { SessionManager } from './session';
 import { matlabString } from './sessionText';
 
@@ -15,6 +15,22 @@ function matlabEditor(): vscode.TextEditor | undefined {
     return undefined;
   }
   return e;
+}
+
+function moveTo(e: vscode.TextEditor, line: number | undefined): void {
+  if (line === undefined) { return; }
+  const p = new vscode.Position(line, 0);
+  e.selection = new vscode.Selection(p, p);
+  e.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+}
+
+/** Ctrl+Down / Ctrl+Up in a .m file: the cursor goes to the next / previous %% section (as in MATLAB). */
+export function goToSection(direction: 1 | -1): void {
+  const e = vscode.window.activeTextEditor;
+  if (!e || e.document.languageId !== 'matlab') { return; }
+  const lines = e.document.getText().split(/\r?\n/);
+  const at = e.selection.active.line;
+  moveTo(e, direction > 0 ? nextSectionStart(lines, at) : previousSectionStart(lines, at));
 }
 
 export async function runFile(session: SessionManager): Promise<void> {
@@ -33,12 +49,15 @@ export async function runFile(session: SessionManager): Promise<void> {
   await session.execute(`run(${matlabString(doc.uri.fsPath)})`, path.basename(doc.fileName, path.extname(doc.fileName)));
 }
 
-export async function runSection(session: SessionManager): Promise<void> {
+/** Run the %% section at the cursor. With `advance` (Run and Advance, Ctrl+Shift+Enter as in MATLAB) the cursor then
+ *  moves to the next section's %% line, so pressing it again runs the sections one after another. */
+export async function runSection(session: SessionManager, advance = false): Promise<void> {
   const e = matlabEditor();
   if (!e) { return; }
   const lines = e.document.getText().split(/\r?\n/);
   const sec = sectionAt(lines, e.selection.active.line);
   const code = lines.slice(sec.start, sec.end + 1).join('\n');
+  if (advance) { moveTo(e, nextSectionStart(lines, sec.start)); }   // the last section: the cursor stays (as in MATLAB)
   if (onlyComments(code)) { return; }
   session.reveal(true);
   const name = path.basename(e.document.fileName);

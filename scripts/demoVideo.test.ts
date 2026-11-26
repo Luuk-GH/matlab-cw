@@ -132,7 +132,7 @@ export async function run(): Promise<void> {
       await cw.test({ kind: 'key', key: 'Tab' });
       await waitFor(async () => (await snap()).completions.length > 0, 8000);
       await sleep(1600);
-      await cw.test({ kind: 'key', key: 'Enter' });   // accepts measurements.mat
+      await cw.test({ kind: 'key', key: 'Tab' });   // takes the top entry, measurements.mat
       await sleep(500);
       await typeSlow(');');
       await sleep(300);
@@ -143,13 +143,21 @@ export async function run(): Promise<void> {
 
     }
     if (want('completion')) {
-      scene('Completion from MATLAB itself');
+      scene('Completion from MATLAB itself: Tab takes the top entry, ↓ picks another');
       await command("results = struct('alpha', 1, 'beta', 2, 'gamma', 3);", 500);
       await typeSlow('results.');
       await cw.test({ kind: 'key', key: 'Ctrl-Space' });
       await waitFor(async () => (await snap()).completions.includes('alpha'), 8000);
-      await sleep(2200);
-      await esc(3);
+      await sleep(1200);
+      await cw.test({ kind: 'key', key: 'ArrowDown' });
+      await sleep(450);
+      await cw.test({ kind: 'key', key: 'ArrowDown' });   // beta
+      await sleep(700);
+      await cw.test({ kind: 'key', key: 'Enter' });       // after ↓, Enter takes the selected entry
+      await sleep(600);
+      await enter();
+      await idle();
+      await sleep(900);
 
     }
     if (want('signature')) {
